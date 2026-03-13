@@ -1,6 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  Avatar,
+  BottomNavigation,
+  BottomNavigationAction,
+  Box,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import styles from "./HomeShell.module.css";
 
 type NavKey =
@@ -18,10 +37,8 @@ type NavItem = {
   key: NavKey;
   label: string;
   description: string;
-  group:
-    | "Health Tracking"
-    | "Analytics"
-    | "User";
+  path: string;
+  group: "Health Tracking" | "Analytics" | "User";
   icon: (props: { className?: string }) => React.ReactNode;
 };
 
@@ -38,7 +55,11 @@ function IconGrid({ className }: { className?: string }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h7v7H4V4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 4h7v7h-7V4z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 13h7v7H4v-7z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 13h7v7h-7v-7z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M13 13h7v7h-7v-7z"
+      />
     </svg>
   );
 }
@@ -97,7 +118,11 @@ function IconChart({ className }: { className?: string }) {
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 19h16" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 15l3-3 3 2 5-6" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 15l3-3 3 2 5-6"
+      />
       <path strokeLinecap="round" strokeLinejoin="round" d="M18 8h1" />
     </svg>
   );
@@ -130,9 +155,21 @@ function IconSparkles({ className }: { className?: string }) {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l1.2 4.2L17 8l-3.8 1.8L12 14l-1.2-4.2L7 8l3.8-1.8L12 2z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l.8 2.6L8 16l-2.2 1.4L5 20l-.8-2.6L2 16l2.2-1.4L5 12z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 12l.7 2.3L22 15.5l-2.3 1.2L19 19l-.7-2.3L16 15.5l2.3-1.2L19 12z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 2l1.2 4.2L17 8l-3.8 1.8L12 14l-1.2-4.2L7 8l3.8-1.8L12 2z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 12l.8 2.6L8 16l-2.2 1.4L5 20l-.8-2.6L2 16l2.2-1.4L5 12z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 12l.7 2.3L22 15.5l-2.3 1.2L19 19l-.7-2.3L16 15.5l2.3-1.2L19 12z"
+      />
     </svg>
   );
 }
@@ -147,7 +184,11 @@ function IconUser({ className }: { className?: string }) {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20 21a8 8 0 10-16 0" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20 21a8 8 0 10-16 0"
+      />
       <circle cx="12" cy="8" r="4" />
     </svg>
   );
@@ -187,7 +228,11 @@ function IconLogout({ className }: { className?: string }) {
       stroke="currentColor"
       strokeWidth="1.8"
     >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l-1 1a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h1a2 2 0 012 2l1 1" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M10 17l-1 1a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h1a2 2 0 012 2l1 1"
+      />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H8" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12l-3-3" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12l-3 3" />
@@ -201,72 +246,50 @@ export default function HomeShell() {
     () => [
       {
         key: "dashboard",
-        label: "Dashboard",
-        description: "Overview of today’s health signals.",
+        label: "Bảng Thống Kê",
+        description: "Tổng quan về sức khỏe của bạn hôm nay.",
         group: "Health Tracking",
+        path: "/dashboard",
         icon: IconGrid,
       },
       {
         key: "health-record",
-        label: "Health Record",
-        description: "Vitals, meds, allergies, visits.",
+        label: "Sức Khỏe",
+        description: "Chỉ số sức khỏe, thuốc, dị ứng, thăm khám.",
         group: "Health Tracking",
+        path: "/health-record",
         icon: IconFileText,
       },
       {
         key: "activity",
-        label: "Activity",
-        description: "Steps, workouts, sleep, recovery.",
+        label: "Hoạt Động",
+        description: "Bước chân, tập luyện, giấc ngủ.",
         group: "Health Tracking",
+        path: "/activity",
         icon: IconActivity,
       },
       {
         key: "statistics",
-        label: "Statistics",
-        description: "Trends across time and categories.",
+        label: "Phân Tích",
+        description: "Xu hướng theo thời gian.",
         group: "Analytics",
+        path: "/statistics",
         icon: IconChart,
       },
       {
         key: "goals",
-        label: "Goals",
-        description: "Set and track health milestones.",
+        label: "Mục Tiêu",
+        description: "Theo dõi mục tiêu sức khỏe.",
         group: "Analytics",
+        path: "/goals",
         icon: IconTarget,
-      },
-      {
-        key: "health-insights",
-        label: "Health Insights",
-        description: "Personalized recommendations.",
-        group: "Analytics",
-        icon: IconSparkles,
-      },
-      {
-        key: "profile",
-        label: "Profile",
-        description: "Your account and personal info.",
-        group: "User",
-        icon: IconUser,
-      },
-      {
-        key: "setting",
-        label: "Setting",
-        description: "Preferences and app configuration.",
-        group: "User",
-        icon: IconSettings,
-      },
-      {
-        key: "logout",
-        label: "Logout",
-        description: "Sign out of this session.",
-        group: "User",
-        icon: IconLogout,
       },
     ],
     [],
   );
 
   const [active, setActive] = useState<NavKey>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const activeItem = items.find((i) => i.key === active) ?? items[0];
 
   const grouped = useMemo(() => {
@@ -277,138 +300,220 @@ export default function HomeShell() {
     } satisfies Record<NavItem["group"], NavItem[]>;
   }, [items]);
 
-  return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar} aria-label="Primary navigation">
-        <div className={styles.brand}>
-          <div className={styles.brandMark} aria-hidden="true" />
-          <div className={styles.brandTitle}>
-            <strong>Health Care</strong>
-            <span>Track • Analyze • Improve</span>
-          </div>
-        </div>
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-        <nav className={styles.navGroups}>
-          <div>
-            <div className={styles.groupLabel}>Health Tracking</div>
-            {grouped["Health Tracking"].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActive(item.key)}
-                className={[
-                  styles.navItem,
-                  active === item.key ? styles.navItemActive : "",
-                ].join(" ")}
-              >
-                <span aria-hidden="true">
-                  {item.icon({ className: styles.navIcon })}
-                </span>
-                <span className={styles.navText}>
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <div className={styles.groupLabel}>Analytics</div>
-            {grouped.Analytics.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActive(item.key)}
-                className={[
-                  styles.navItem,
-                  active === item.key ? styles.navItemActive : "",
-                ].join(" ")}
-              >
-                <span aria-hidden="true">
-                  {item.icon({ className: styles.navIcon })}
-                </span>
-                <span className={styles.navText}>
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <div className={styles.groupLabel}>User</div>
-            {grouped.User.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setActive(item.key)}
-                className={[
-                  styles.navItem,
-                  active === item.key ? styles.navItemActive : "",
-                ].join(" ")}
-              >
-                <span aria-hidden="true">
-                  {item.icon({ className: styles.navIcon })}
-                </span>
-                <span className={styles.navText}>
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
-      </aside>
-
-      <main className={styles.content}>
-        <header className={styles.header}>
-          <div className={styles.title}>
-            <h1>{activeItem.label}</h1>
-            <p>{activeItem.description}</p>
-          </div>
-        </header>
-
-        <section className={styles.cards} aria-label="Content">
-          <article className={styles.card}>
-            <h3>Quick summary</h3>
-            <p>
-              This is placeholder content for <strong>{activeItem.label}</strong>.
-              Next step: wire each menu item to real pages/routes or feature
-              components.
-            </p>
-          </article>
-
-          <article className={styles.card}>
-            <h3>Next actions</h3>
-            <p>
-              Add real data (API), charts, and forms here. If you want, I can turn
-              each drawer item into a real route like <code>/dashboard</code>,
-              <code>/goals</code>, etc.
-            </p>
-          </article>
-        </section>
-      </main>
-
-      <nav className={styles.mobileDock} aria-label="Mobile navigation">
-        {items.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => setActive(item.key)}
-            title={item.label}
-            aria-label={item.label}
-            className={[
-              styles.dockItem,
-              active === item.key ? styles.dockItemActive : "",
-            ].join(" ")}
+  const renderSidebarContent = () => (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Toolbar
+        sx={{
+          px: 2,
+          py: 2,
+          gap: 1.5,
+        }}
+      >
+        <Avatar
+          sx={{
+            bgcolor: "primary.main",
+            backgroundImage:
+              "linear-gradient(135deg, #0ea5e9 0%, #6366f1 55%, #22c55e 100%)",
+          }}
+        >
+          HC
+        </Avatar>
+        <Box>
+          <Typography
+            variant="subtitle1"
+            fontWeight={700}
+            letterSpacing="-0.04em"
+            color="white"
+            fontSize="1.5rem"
           >
-            <span aria-hidden="true">
-              {item.icon({ className: styles.dockIcon })}
-            </span>
-          </button>
-        ))}
-      </nav>
-    </div>
+            Health Care
+          </Typography>
+          <Typography variant="caption" color="white" fontSize="0.8rem">
+            Theo dõi • Phân tích • Cải thiện
+          </Typography>
+        </Box>
+      </Toolbar>
+
+      <Divider />
+
+      <Box sx={{ flex: 1, overflow: "auto", pt: 1 }}>
+        <Typography
+          variant="overline"
+          sx={{ px: 2.25, pt: 1, pb: 0.5 }}
+          color="text.secondary"
+        >
+          Health Tracking
+        </Typography>
+        <List dense disablePadding>
+          {grouped["Health Tracking"].map((item) => (
+            <ListItemButton
+              key={item.key}
+              selected={active === item.key}
+              onClick={() => setActive(item.key)}
+            >
+              <ListItemIcon>
+                {item.icon({ className: styles.navIcon })}
+              </ListItemIcon>
+              <ListItemText primary={item.label} secondary={item.description} />
+            </ListItemButton>
+          ))}
+        </List>
+
+        <Typography
+          variant="overline"
+          sx={{ px: 2.25, pt: 2, pb: 0.5 }}
+          color="text.secondary"
+        >
+          Analytics
+        </Typography>
+        <List dense disablePadding>
+          {grouped.Analytics.map((item) => (
+            <ListItemButton
+              key={item.key}
+              selected={active === item.key}
+              onClick={() => setActive(item.key)}
+            >
+              <ListItemIcon>
+                {item.icon({ className: styles.navIcon })}
+              </ListItemIcon>
+              <ListItemText primary={item.label} secondary={item.description} />
+            </ListItemButton>
+          ))}
+        </List>
+
+        <Typography
+          variant="overline"
+          sx={{ px: 2.25, pt: 2, pb: 0.5 }}
+          color="text.secondary"
+        >
+          User
+        </Typography>
+        <List dense disablePadding>
+          {grouped.User.map((item) => (
+            <ListItemButton
+              key={item.key}
+              selected={active === item.key}
+              onClick={() => setActive(item.key)}
+            >
+              <ListItemIcon>
+                {item.icon({ className: styles.navIcon })}
+              </ListItemIcon>
+              <ListItemText primary={item.label} secondary={item.description} />
+            </ListItemButton>
+          ))}
+        </List>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box
+      className={styles.shell}
+      sx={
+        !isMobile
+          ? { gridTemplateColumns: sidebarOpen ? "280px 1fr" : "1fr" }
+          : undefined
+      }
+    >
+      {/* Desktop drawer */}
+      {!isMobile && sidebarOpen && (
+        <Drawer
+          variant="permanent"
+          PaperProps={{
+            sx: {
+              width: 280,
+              borderRight: "none",
+              backgroundImage:
+                "linear-gradient(180deg, #020617 0%, #020617 35%, #0f172a 100%)",
+              color: "common.white",
+            },
+          }}
+        >
+          {renderSidebarContent()}
+        </Drawer>
+      )}
+
+      {/* Main content */}
+      <Box component="main" className={styles.content}>
+        <Box className={styles.header}>
+          <Box className={styles.title}>
+            <Typography variant="h5" fontWeight={700} letterSpacing="-0.04em">
+              {activeItem.label}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {activeItem.description}
+            </Typography>
+          </Box>
+          {!isMobile && (
+            <IconButton
+              size="small"
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            >
+              {sidebarOpen ? (
+                <ChevronLeftIcon fontSize="small" />
+              ) : (
+                <MenuIcon fontSize="small" />
+              )}
+            </IconButton>
+          )}
+        </Box>
+
+        <Box className={styles.cards} aria-label="Content">
+          <Box component="article" className={styles.card}>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              Quick summary
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              This is placeholder content for{" "}
+              <strong>{activeItem.label}</strong>. Next step: wire each menu
+              item to real pages/routes or feature components.
+            </Typography>
+          </Box>
+
+          <Box component="article" className={styles.card}>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+              Next actions
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Add real data (API), charts, and forms here. If you want, I can
+              turn each drawer item into a real route like{" "}
+              <code>/dashboard</code>,<code>/goals</code>, etc.
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Mobile bottom navigation */}
+      {isMobile && (
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "background.paper",
+            borderTop: 1,
+            borderColor: "divider",
+          }}
+        >
+          <BottomNavigation
+            showLabels={false}
+            value={items.findIndex((i) => i.key === active)}
+            onChange={(_, index) => setActive(items[index].key)}
+          >
+            {items.map((item) => (
+              <BottomNavigationAction
+                key={item.key}
+                icon={item.icon({ className: styles.dockIcon })}
+              />
+            ))}
+          </BottomNavigation>
+        </Box>
+      )}
+    </Box>
   );
 }
-
