@@ -21,6 +21,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import styles from "./HomeShell.module.css";
+import { useRouter } from "next/navigation";
 
 type NavKey =
   | "dashboard"
@@ -241,7 +242,7 @@ function IconLogout({ className }: { className?: string }) {
   );
 }
 
-export default function HomeShell() {
+export default function HomeShell({ children }: { children: React.ReactNode }) {
   const items: NavItem[] = useMemo(
     () => [
       {
@@ -249,7 +250,7 @@ export default function HomeShell() {
         label: "Bảng Thống Kê",
         description: "Tổng quan về sức khỏe của bạn hôm nay.",
         group: "Health Tracking",
-        path: "/dashboard",
+        path: "/",
         icon: IconGrid,
       },
       {
@@ -284,10 +285,43 @@ export default function HomeShell() {
         path: "/goals",
         icon: IconTarget,
       },
+      {
+        key: "health-insights",
+        label: "Cải thiện Sức Khỏe",
+        description: "Gợi ý cá nhân hóa để cải thiện sức khỏe của bạn.",
+        group: "Analytics",
+        icon: IconSparkles,
+        path: "/health-insights",
+      },
+      {
+        key: "profile",
+        label: "Hồ Sơ",
+        description: "Thông tin tài khoản và thông tin cá nhân của bạn.",
+        group: "User",
+        icon: IconUser,
+        path: "/profile",
+      },
+      {
+        key: "setting",
+        label: "Cài Đặt",
+        description: "Cài đặt và cấu hình ứng dụng.",
+        group: "User",
+        icon: IconSettings,
+        path: "/setting",
+      },
+      {
+        key: "logout",
+        label: "Đăng Xuất",
+        description: "Đăng xuất khỏi phiên làm việc này.",
+        group: "User",
+        icon: IconLogout,
+        path: "#",
+      },
     ],
     [],
   );
 
+  const router = useRouter();
   const [active, setActive] = useState<NavKey>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const activeItem = items.find((i) => i.key === active) ?? items[0];
@@ -302,6 +336,14 @@ export default function HomeShell() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const handleNavigate = (item: NavItem) => {
+    setActive(item.key);
+
+    if (item.path && item.path !== "#") {
+      router.push(item.path);
+    }
+  };
 
   const renderSidebarContent = () => (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -352,7 +394,7 @@ export default function HomeShell() {
             <ListItemButton
               key={item.key}
               selected={active === item.key}
-              onClick={() => setActive(item.key)}
+              onClick={() => handleNavigate(item)}
             >
               <ListItemIcon>
                 {item.icon({ className: styles.navIcon })}
@@ -374,7 +416,7 @@ export default function HomeShell() {
             <ListItemButton
               key={item.key}
               selected={active === item.key}
-              onClick={() => setActive(item.key)}
+              onClick={() => handleNavigate(item)}
             >
               <ListItemIcon>
                 {item.icon({ className: styles.navIcon })}
@@ -396,7 +438,7 @@ export default function HomeShell() {
             <ListItemButton
               key={item.key}
               selected={active === item.key}
-              onClick={() => setActive(item.key)}
+              onClick={() => handleNavigate(item)}
             >
               <ListItemIcon>
                 {item.icon({ className: styles.navIcon })}
@@ -447,44 +489,19 @@ export default function HomeShell() {
               {activeItem.description}
             </Typography>
           </Box>
+
           {!isMobile && (
             <IconButton
               size="small"
               onClick={() => setSidebarOpen((prev) => !prev)}
-              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             >
-              {sidebarOpen ? (
-                <ChevronLeftIcon fontSize="small" />
-              ) : (
-                <MenuIcon fontSize="small" />
-              )}
+              {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
             </IconButton>
           )}
         </Box>
 
-        <Box className={styles.cards} aria-label="Content">
-          <Box component="article" className={styles.card}>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              Quick summary
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              This is placeholder content for{" "}
-              <strong>{activeItem.label}</strong>. Next step: wire each menu
-              item to real pages/routes or feature components.
-            </Typography>
-          </Box>
-
-          <Box component="article" className={styles.card}>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              Next actions
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Add real data (API), charts, and forms here. If you want, I can
-              turn each drawer item into a real route like{" "}
-              <code>/dashboard</code>,<code>/goals</code>, etc.
-            </Typography>
-          </Box>
-        </Box>
+        {/* OUTLET */}
+        <Box className={styles.pageContent}>{children}</Box>
       </Box>
 
       {/* Mobile bottom navigation */}
