@@ -185,6 +185,7 @@ export default function Dashboard() {
           textTransform: "none",
           "&:hover": { bgcolor: "#65a30d" },
         }}
+        onClick={() => signIn()}
       >
         Learn New Words
       </Button>

@@ -303,10 +303,10 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
             color="white"
             fontSize="1.25rem"
           >
-            Vocabulary Coach
+            Học Từ Vựng
           </Typography>
           <Typography variant="caption" color="white" fontSize="0.875rem">
-            Học từ vựng • Luyện tập mỗi ngày • Tự tin nói chuyện
+            Luyện tập mỗi ngày • Tự tin nói chuyện
           </Typography>
         </Box>
       </Toolbar>

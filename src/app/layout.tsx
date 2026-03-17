@@ -3,8 +3,8 @@ import "./globals.css";
 import MuiThemeProvider from "@/components/providers/MuiThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Vocabulary App",
-  description: "Vocabulary learning app for building your word bank",
+  title: "Học Từ Vựng",
+  description: "Học Từ Vựng Tiếng Anh Hiệu Quả",
 };
 
 export default function RootLayout({
