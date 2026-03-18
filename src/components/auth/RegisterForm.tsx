@@ -4,7 +4,6 @@ import { FormEvent, useState } from "react";
 import {
   Box,
   Button,
-  Divider,
   IconButton,
   InputAdornment,
   TextField,
@@ -12,20 +11,18 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { usePasswordVisibility } from "@/components/hooks/usePasswordVisibility";
+import { useSnackbar } from "@/context/snackbar.provider";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useSnackbar } from "@/context/snackbar.provider";
-import GoogleIcon from "@mui/icons-material/Google";
-import Link from "next/link";
-import { json } from "stream/consumers";
 
-type LoginFormProps = {
+type RegisterFormProps = {
   onSubmit?: (values: { email: string; password: string }) => void;
 };
 
-export default function LoginForm({ onSubmit }: LoginFormProps) {
+export default function RegisterForm({ onSubmit }: RegisterFormProps) {
   const router = useRouter();
-
   const { showSnackbar } = useSnackbar();
 
   const [errorEmail, setErrorEmail] = useState<string>("");
@@ -58,16 +55,28 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
       return;
     }
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email ?? "",
+        password: password ?? "",
+      }),
     });
 
-    if (!res?.error) {
-      router.push("/");
+    console.log(res);
+
+    const data = await res.json();
+
+    console.log(data);
+
+    if (!data?.error) {
+      showSnackbar("Đăng ký thành công!", "success");
+      router.push("/auth/signin");
     } else {
-      showSnackbar(res?.error, "error");
+      showSnackbar(data?.message || "Đăng ký thất bại!", "error");
     }
   };
 
@@ -122,18 +131,6 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
             }}
           />
         </Box>
-        <Link
-          href="/auth/signup"
-          style={{
-            textAlign: "left",
-            fontSize: "0.8rem",
-            fontWeight: 500,
-            color: "#1976d2",
-            textDecoration: "underline",
-          }}
-        >
-          Không có tài khoản? Đăng ký ngay!
-        </Link>
 
         <Button
           type="submit"
@@ -147,25 +144,25 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
           }}
           fullWidth
         >
-          Đăng nhập
+          Đăng ký
         </Button>
-
-        <Divider sx={{ my: 2 }}>Hoặc</Divider>
-        <Button
-          variant="outlined"
-          sx={{
-            mt: 1,
-            borderRadius: 999,
-            textTransform: "none",
-            fontWeight: 600,
-            py: 1,
-          }}
-          fullWidth
-          onClick={() => signIn("google", { callbackUrl: "/" })}
-        >
-          <GoogleIcon sx={{ mr: 1 }} fontSize="small" />
-          Đăng nhập với Google
-        </Button>
+      </Box>
+      <Box
+        sx={{
+          textAlign: "left",
+          fontSize: "0.8rem",
+          fontWeight: 500,
+          color: "#1976d2",
+          textDecoration: "underline",
+          display: "flex",
+          gap: 0.5,
+          mt: 4,
+          cursor: "pointer",
+        }}
+        onClick={() => signIn()}
+      >
+        <ArrowBackIcon />
+        <Link href="#">Bạn đã có tài khoản? Đăng nhập ngay!</Link>
       </Box>
     </>
   );
