@@ -5,6 +5,7 @@ declare module "next-auth" {
     access_token?: string;
     refresh_token?: string;
     user: unknow;
+    error?: string;
   }
 
   interface User {
@@ -12,6 +13,7 @@ declare module "next-auth" {
       access_token: string;
       refreshToken: string;
       user: unknow;
+      error?: string;
     };
   }
 }
@@ -21,5 +23,6 @@ declare module "next-auth/jwt" {
     access_token?: string;
     refresh_token?: string;
     user?: unknow;
+    error?: string;
   }
 }

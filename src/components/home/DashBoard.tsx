@@ -12,7 +12,8 @@ import {
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import AssessmentIcon from "@mui/icons-material/Assessment";
-import { signIn } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 // Mock data cho các trình độ
 const levelData = [
@@ -37,6 +38,14 @@ const levelData = [
 ];
 
 export default function Dashboard() {
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      signOut({ callbackUrl: "/auth/signin" });
+    }
+  }, [session]);
+
   return (
     <Box sx={{ maxWidth: 1200, mx: "auto", p: { xs: 1, md: 3 } }}>
       {/* SECTION 1: TOP CARDS */}
