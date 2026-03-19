@@ -95,12 +95,12 @@ export default function Dashboard() {
                 fontWeight={700}
                 sx={{ width: "100%", textAlign: "left" }}
               >
-                ● Daily Progress
+                ● Tiến Độ Học Tập
               </Typography>
 
               <Box textAlign="center" mb={5}>
                 <Typography variant="h4" fontWeight={800}>
-                  Day 1
+                  Ngày 1
                 </Typography>
               </Box>
             </Box>
@@ -129,7 +129,7 @@ export default function Dashboard() {
               fontWeight={700}
               sx={{ width: "100%", textAlign: "left" }}
             >
-              ★ Repeat Words
+              ★ Từ Cần Ôn Lại
             </Typography>
 
             <Box sx={{ position: "relative", display: "inline-flex", mt: 2 }}>
@@ -196,14 +196,14 @@ export default function Dashboard() {
         }}
         onClick={() => signIn()}
       >
-        Learn New Words
+        Học Từ Vựng
       </Button>
 
       {/* SECTION 3: PROGRESS BY LEVELS */}
       <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
         <AssessmentIcon fontSize="small" color="action" />
         <Typography variant="h6" fontWeight={700} color="text.secondary">
-          My Progress on Topics
+          Trình độ của bạn
         </Typography>
       </Box>
 

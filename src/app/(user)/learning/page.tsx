@@ -1,3 +1,5 @@
+import VocabularyPage from "@/components/learning/Vocabulary";
+
 export default function HealthRecordPage() {
-  return <div>Health Record Page</div>;
+  return <VocabularyPage />;
 }

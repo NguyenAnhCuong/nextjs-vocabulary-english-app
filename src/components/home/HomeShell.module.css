@@ -117,8 +117,9 @@
 }
 
 .content {
+  background-color: #fff;
   min-width: 0;
-  padding: 26px 28px;
+  padding: 20px;
 }
 
 .header {
