@@ -23,6 +23,7 @@ import QuizIcon from "@mui/icons-material/Quiz";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import styles from "./HomeShell.module.css";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 type NavKey =
   | "dashboard"
@@ -197,6 +198,9 @@ function IconLogout({ className }: { className?: string }) {
 }
 
 export default function HomeShell({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  console.log(session);
+
   const items: NavItem[] = useMemo(
     () => [
       {
@@ -244,7 +248,7 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
       },
       {
         key: "profile",
-        label: "Hồ Sơ Cá Nhân",
+        label: `${session?.user?.name || "Hồ Sơ Cá Nhân"}`,
         description: "Quản lý tài khoản và tùy chọn của bạn.",
         group: "User",
         icon: IconUser,

@@ -18,23 +18,35 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import StarIcon from "@mui/icons-material/Star";
 import LockIcon from "@mui/icons-material/Lock";
-import { LEVEL_GROUPS } from "@/types/vocabulary";
+import type { LevelGroup } from "@/types/vocabulary";
+import { useFavStar } from "@/components/hooks/useVocabulary";
 
 const FILTERS = ["Tất cả từ", "Chưa học", "Đang học", "Đã thuộc"];
 
-export default function LevelTab() {
+interface LevelTabProps {
+  levelGroups: LevelGroup[];
+}
+
+export default function LevelTab({ levelGroups }: LevelTabProps) {
   const [filter, setFilter] = useState("Tất cả từ");
-  const [favs, setFavs] = useState<Set<string>>(
-    new Set(["w8", "w12", "w17", "w18"]),
+
+  // Tập hợp wordId đã yêu thích từ data server
+  const initialFavIds = new Set(
+    levelGroups
+      .flatMap((g) => g.words)
+      .filter((w) => w.isFav)
+      .map((w) => w.wordId ?? w.id),
   );
 
-  const toggleFav = (id: string) => {
-    setFavs((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  const { favIds, toggle } = useFavStar(initialFavIds);
+
+  if (!levelGroups.length) {
+    return (
+      <Box textAlign="center" py={8}>
+        <Typography color="text.secondary">Chưa có dữ liệu cấp độ.</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -72,7 +84,7 @@ export default function LevelTab() {
       </Stack>
 
       <Stack spacing={1.5}>
-        {LEVEL_GROUPS.map((grp, i) => (
+        {levelGroups.map((grp, i) => (
           <Accordion
             key={grp.level}
             disableGutters
@@ -104,7 +116,6 @@ export default function LevelTab() {
                 },
               }}
             >
-              {/* Level badge */}
               <Chip
                 label={grp.level}
                 size="small"
@@ -119,8 +130,6 @@ export default function LevelTab() {
                   flexShrink: 0,
                 }}
               />
-
-              {/* Info */}
               <Box flex={1} minWidth={0}>
                 <Typography fontWeight={600} fontSize="14px">
                   {grp.nameVi} — {grp.nameEn}
@@ -129,8 +138,6 @@ export default function LevelTab() {
                   {grp.desc}
                 </Typography>
               </Box>
-
-              {/* Stats */}
               <Stack
                 direction="row"
                 spacing={3}
@@ -194,90 +201,109 @@ export default function LevelTab() {
                 </Stack>
               ) : (
                 <>
-                  {/* Progress bar */}
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={1.5}
-                    mt={1.5}
-                    mb={2}
-                  >
-                    <LinearProgress
-                      variant="determinate"
-                      value={Math.round(
-                        (grp.learnedWords / grp.totalWords) * 100,
-                      )}
-                      sx={{
-                        flex: 1,
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: "rgba(0,0,0,0.07)",
-                        "& .MuiLinearProgress-bar": {
-                          bgcolor: grp.color,
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      fontWeight={600}
-                      color={grp.textColor}
-                      minWidth={32}
+                  {grp.totalWords > 0 && (
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={1.5}
+                      mt={1.5}
+                      mb={2}
                     >
-                      {Math.round((grp.learnedWords / grp.totalWords) * 100)}%
-                    </Typography>
-                  </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.round(
+                          (grp.learnedWords / grp.totalWords) * 100,
+                        )}
+                        sx={{
+                          flex: 1,
+                          height: 6,
+                          borderRadius: 3,
+                          bgcolor: "rgba(0,0,0,0.07)",
+                          "& .MuiLinearProgress-bar": {
+                            bgcolor: grp.color,
+                            borderRadius: 3,
+                          },
+                        }}
+                      />
+                      <Typography
+                        variant="caption"
+                        fontWeight={600}
+                        color={grp.textColor}
+                        minWidth={32}
+                      >
+                        {Math.round((grp.learnedWords / grp.totalWords) * 100)}%
+                      </Typography>
+                    </Stack>
+                  )}
 
-                  {/* Word mini grid */}
-                  <Grid container spacing={1}>
-                    {grp.words.map((word) => (
-                      <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }} key={word.id}>
-                        <Paper
-                          variant="outlined"
-                          sx={{
-                            p: 1.25,
-                            borderRadius: 2,
-                            cursor: "pointer",
-                            bgcolor: "background.default",
-                            borderColor: "divider",
-                            "&:hover": { bgcolor: "#ece8e0" },
-                            transition: "background 0.12s",
-                            position: "relative",
-                          }}
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => toggleFav(word.id)}
-                            sx={{
-                              position: "absolute",
-                              top: 4,
-                              right: 4,
-                              p: 0.25,
-                              color: favs.has(word.id)
-                                ? "#f5b342"
-                                : "text.disabled",
-                              "&:hover": {
-                                color: "#f5b342",
-                                bgcolor: "transparent",
-                              },
-                            }}
+                  {grp.words.length === 0 ? (
+                    <Typography variant="caption" color="text.disabled">
+                      Chưa có từ nào trong cấp độ này.
+                    </Typography>
+                  ) : (
+                    <Grid container spacing={1}>
+                      {grp.words.map((word) => {
+                        const wId = word.wordId ?? word.id;
+                        return (
+                          <Grid
+                            size={{ xs: 6, sm: 4, md: 3, lg: 2 }}
+                            key={word.id}
                           >
-                            {favs.has(word.id) ? (
-                              <StarIcon sx={{ fontSize: 14 }} />
-                            ) : (
-                              <StarBorderIcon sx={{ fontSize: 14 }} />
-                            )}
-                          </IconButton>
-                          <Typography fontWeight={600} fontSize="13px" pr={2}>
-                            {word.en}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {word.vi}
-                          </Typography>
-                        </Paper>
-                      </Grid>
-                    ))}
-                  </Grid>
+                            <Paper
+                              variant="outlined"
+                              sx={{
+                                p: 1.25,
+                                borderRadius: 2,
+                                cursor: "pointer",
+                                bgcolor: "background.default",
+                                borderColor: "divider",
+                                "&:hover": { bgcolor: "#ece8e0" },
+                                transition: "background 0.12s",
+                                position: "relative",
+                              }}
+                            >
+                              <IconButton
+                                size="small"
+                                onClick={() => toggle(wId)}
+                                sx={{
+                                  position: "absolute",
+                                  top: 4,
+                                  right: 4,
+                                  p: 0.25,
+                                  color: favIds.has(wId)
+                                    ? "#f5b342"
+                                    : "text.disabled",
+                                  "&:hover": {
+                                    color: "#f5b342",
+                                    bgcolor: "transparent",
+                                  },
+                                }}
+                              >
+                                {favIds.has(wId) ? (
+                                  <StarIcon sx={{ fontSize: 14 }} />
+                                ) : (
+                                  <StarBorderIcon sx={{ fontSize: 14 }} />
+                                )}
+                              </IconButton>
+                              <Typography
+                                fontWeight={600}
+                                fontSize="13px"
+                                pr={2}
+                              >
+                                {word.en}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {word.vi}
+                              </Typography>
+                            </Paper>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  )}
                 </>
               )}
             </AccordionDetails>

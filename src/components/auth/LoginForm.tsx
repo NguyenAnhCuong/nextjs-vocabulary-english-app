@@ -17,7 +17,6 @@ import { useRouter } from "next/navigation";
 import { useSnackbar } from "@/context/snackbar.provider";
 import GoogleIcon from "@mui/icons-material/Google";
 import Link from "next/link";
-import { json } from "stream/consumers";
 
 type LoginFormProps = {
   onSubmit?: (values: { email: string; password: string }) => void;
@@ -67,6 +66,10 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
     if (!res?.error) {
       router.push("/");
     } else {
+      if (res?.error === "CredentialsSignin") {
+        showSnackbar("Email hoặc mật khẩu không đúng", "error");
+        return;
+      }
       showSnackbar(res?.error, "error");
     }
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Grid,
@@ -10,10 +10,11 @@ import {
   Chip,
   Stack,
   IconButton,
-  Divider,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
-import { FAV_WORDS, LEVEL_COLORS } from "@/types/vocabulary";
+import type { VocabWord } from "@/types/vocabulary";
+import { LEVEL_COLORS } from "@/types/vocabulary";
+import { useFavourites } from "@/components/hooks/useVocabulary";
 
 const TOPIC_FILTERS = [
   "Tất cả",
@@ -21,25 +22,22 @@ const TOPIC_FILTERS = [
   "🌍 Du lịch",
   "💻 Công nghệ",
   "💬 Giao tiếp",
+  "✏️ Từ của tôi",
 ];
 
-export default function FavouriteTab() {
+interface FavouriteTabProps {
+  initialFavs: VocabWord[];
+}
+
+export default function FavouriteTab({ initialFavs }: FavouriteTabProps) {
   const [topicFilter, setTopicFilter] = useState("Tất cả");
-  const [favs, setFavs] = useState<Set<string>>(
-    new Set(FAV_WORDS.map((w) => w.id)),
+  const { favWords, toggle, loading } = useFavourites(initialFavs);
+
+  const filtered = favWords.filter((w) =>
+    topicFilter === "Tất cả"
+      ? true
+      : w.topic.includes(topicFilter.replace(/^[^\s]+ /, "")),
   );
-
-  const toggleFav = (id: string) => {
-    setFavs((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const filtered = FAV_WORDS.filter((w) =>
-    topicFilter === "Tất cả" ? true : w.topic === topicFilter,
-  ).filter((w) => favs.has(w.id));
 
   const reviewLabel = (days: number | "today") => {
     if (days === "today") return "Ôn lại: hôm nay";
@@ -80,34 +78,22 @@ export default function FavouriteTab() {
             }}
           />
         ))}
-        <Box
-          width={1}
-          height={18}
-          borderLeft="1px solid"
-          borderColor="divider"
-          mx={0.5}
-          display="inline-block"
-          sx={{ verticalAlign: "middle", width: 1, height: 18 }}
-        />
-        <Chip
-          label="Cần ôn lại"
-          size="small"
-          variant="outlined"
-          sx={{ borderColor: "divider", cursor: "pointer", fontSize: "12px" }}
-        />
       </Stack>
 
       {filtered.length === 0 ? (
         <Box textAlign="center" py={8}>
           <Typography fontSize={40}>⭐</Typography>
           <Typography color="text.secondary" mt={1}>
-            Chưa có từ yêu thích nào.
+            {favWords.length === 0
+              ? "Chưa có từ yêu thích nào. Nhấn ★ trên bất kỳ từ nào để thêm!"
+              : "Không có từ yêu thích nào trong chủ đề này."}
           </Typography>
         </Box>
       ) : (
         <Grid container spacing={1.75}>
           {filtered.map((word, i) => {
             const lvl = LEVEL_COLORS[word.level];
+            const isLoading = loading === (word.wordId ?? word.userWordId);
             return (
               <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={word.id}>
                 <Card
@@ -125,13 +111,14 @@ export default function FavouriteTab() {
                       boxShadow: "0 8px 24px rgba(0,0,0,0.09)",
                     },
                     transition: "transform 0.15s, box-shadow 0.15s",
+                    opacity: isLoading ? 0.6 : 1,
                   }}
                 >
                   <CardContent sx={{ p: 2.5 }}>
-                    {/* Star button */}
                     <IconButton
                       size="small"
-                      onClick={() => toggleFav(word.id)}
+                      disabled={isLoading}
+                      onClick={() => toggle(word.wordId, word.userWordId)}
                       sx={{
                         position: "absolute",
                         top: 12,
@@ -143,7 +130,6 @@ export default function FavouriteTab() {
                       <StarIcon fontSize="small" />
                     </IconButton>
 
-                    {/* Word */}
                     <Typography
                       fontFamily="'Playfair Display', serif"
                       fontSize={22}
@@ -163,13 +149,12 @@ export default function FavouriteTab() {
                       {word.phonetic} · {word.type}
                     </Typography>
 
-                    {/* Level chip */}
                     <Chip
                       label={word.level}
                       size="small"
                       sx={{
-                        bgcolor: lvl.bg,
-                        color: lvl.color,
+                        bgcolor: lvl?.bg,
+                        color: lvl?.color,
                         fontWeight: 700,
                         fontSize: "11px",
                         height: 22,
@@ -178,7 +163,6 @@ export default function FavouriteTab() {
                       }}
                     />
 
-                    {/* Meaning */}
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -188,23 +172,23 @@ export default function FavouriteTab() {
                       {word.meaning}
                     </Typography>
 
-                    {/* Example */}
-                    <Typography
-                      variant="caption"
-                      color="text.disabled"
-                      fontStyle="italic"
-                      lineHeight={1.6}
-                      display="block"
-                      sx={{
-                        pt: 1,
-                        borderTop: "1px solid",
-                        borderColor: "divider",
-                      }}
-                    >
-                      "{word.example}"
-                    </Typography>
+                    {word.example && (
+                      <Typography
+                        variant="caption"
+                        color="text.disabled"
+                        fontStyle="italic"
+                        lineHeight={1.6}
+                        display="block"
+                        sx={{
+                          pt: 1,
+                          borderTop: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        "{word.example}"
+                      </Typography>
+                    )}
 
-                    {/* Footer */}
                     <Stack
                       direction="row"
                       justifyContent="space-between"

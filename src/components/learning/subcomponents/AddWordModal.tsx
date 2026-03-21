@@ -14,40 +14,44 @@ import {
   FormControl,
   InputLabel,
   IconButton,
-  Typography,
-  Box,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { CefrLevel, WordType } from "@/types/vocabulary";
+
+type WordTypeKey = "NOUN" | "VERB" | "ADJECTIVE" | "ADVERB" | "PHRASE";
+type CefrLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+
+const WORD_TYPES: { value: WordTypeKey; label: string }[] = [
+  { value: "NOUN", label: "Danh từ" },
+  { value: "VERB", label: "Động từ" },
+  { value: "ADJECTIVE", label: "Tính từ" },
+  { value: "ADVERB", label: "Phó từ" },
+  { value: "PHRASE", label: "Thành ngữ" },
+];
+const LEVELS: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
+
+interface SaveDto {
+  en: string;
+  phonetic?: string;
+  type: WordTypeKey;
+  level: CefrLevel;
+  meaning: string;
+  example?: string;
+  note?: string;
+}
 
 interface AddWordModalProps {
   open: boolean;
   onClose: () => void;
-  onSave?: (word: {
-    en: string;
-    phonetic: string;
-    type: WordType;
-    level: CefrLevel;
-    meaning: string;
-    example: string;
-    note: string;
-  }) => void;
+  onSave: (dto: SaveDto) => Promise<void>;
+  saving?: boolean;
 }
 
-const WORD_TYPES: WordType[] = [
-  "Danh từ",
-  "Động từ",
-  "Tính từ",
-  "Phó từ",
-  "Thành ngữ",
-];
-const LEVELS: CefrLevel[] = ["A1", "A2", "B1", "B2", "C1", "C2"];
-
-const defaultForm = {
+const defaultForm: SaveDto = {
   en: "",
   phonetic: "",
-  type: "Danh từ" as WordType,
-  level: "B2" as CefrLevel,
+  type: "NOUN",
+  level: "B2",
   meaning: "",
   example: "",
   note: "",
@@ -57,24 +61,40 @@ export default function AddWordModal({
   open,
   onClose,
   onSave,
+  saving = false,
 }: AddWordModalProps) {
-  const [form, setForm] = useState(defaultForm);
+  const [form, setForm] = useState<SaveDto>(defaultForm);
+  const [errors, setErrors] = useState<Partial<Record<keyof SaveDto, string>>>(
+    {},
+  );
 
-  const handleChange =
-    (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | { value: unknown }>) => {
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    };
+  const set =
+    (field: keyof SaveDto) =>
+    (e: React.ChangeEvent<HTMLInputElement | { value: unknown }>) =>
+      setForm((p) => ({ ...p, [field]: e.target.value as string }));
 
-  const handleSave = () => {
-    if (!form.en.trim() || !form.meaning.trim()) return;
-    onSave?.(form);
-    setForm(defaultForm);
-    onClose();
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!form.en.trim()) e.en = "Vui lòng nhập từ tiếng Anh";
+    if (!form.meaning.trim()) e.meaning = "Vui lòng nhập nghĩa tiếng Việt";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    try {
+      await onSave(form);
+      setForm(defaultForm);
+      setErrors({});
+    } catch (err: any) {
+      setErrors({ en: err?.message ?? "Lưu thất bại, vui lòng thử lại!" });
+    }
   };
 
   const handleClose = () => {
     setForm(defaultForm);
+    setErrors({});
     onClose();
   };
 
@@ -84,9 +104,7 @@ export default function AddWordModal({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: "20px", p: 0.5 },
-      }}
+      PaperProps={{ sx: { borderRadius: "20px", p: 0.5 } }}
     >
       <DialogTitle
         sx={{
@@ -107,7 +125,6 @@ export default function AddWordModal({
             top: 16,
             right: 16,
             color: "text.secondary",
-            "&:hover": { bgcolor: "rgba(0,0,0,0.05)" },
           }}
         >
           <CloseIcon fontSize="small" />
@@ -116,15 +133,16 @@ export default function AddWordModal({
 
       <DialogContent sx={{ px: 3, pt: 2, pb: 1 }}>
         <Grid container spacing={2}>
-          {/* EN word + phonetic */}
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Từ tiếng Anh *"
               fullWidth
               size="small"
               value={form.en}
-              onChange={handleChange("en")}
+              onChange={set("en")}
               placeholder="e.g. Serendipity"
+              error={!!errors.en}
+              helperText={errors.en}
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
@@ -134,13 +152,12 @@ export default function AddWordModal({
               fullWidth
               size="small"
               value={form.phonetic}
-              onChange={handleChange("phonetic")}
+              onChange={set("phonetic")}
               placeholder="e.g. /ˌserənˈdɪpɪti/"
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
 
-          {/* Type + Level */}
           <Grid size={{ xs: 12, sm: 6 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Loại từ</InputLabel>
@@ -148,12 +165,15 @@ export default function AddWordModal({
                 value={form.type}
                 label="Loại từ"
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, type: e.target.value as WordType }))
+                  setForm((p) => ({
+                    ...p,
+                    type: e.target.value as WordTypeKey,
+                  }))
                 }
               >
                 {WORD_TYPES.map((t) => (
-                  <MenuItem key={t} value={t}>
-                    {t}
+                  <MenuItem key={t.value} value={t.value}>
+                    {t.label}
                   </MenuItem>
                 ))}
               </Select>
@@ -178,20 +198,19 @@ export default function AddWordModal({
             </FormControl>
           </Grid>
 
-          {/* Meaning */}
           <Grid size={{ xs: 12 }}>
             <TextField
               label="Nghĩa tiếng Việt *"
               fullWidth
               size="small"
               value={form.meaning}
-              onChange={handleChange("meaning")}
+              onChange={set("meaning")}
               placeholder="e.g. Sự tình cờ may mắn"
+              error={!!errors.meaning}
+              helperText={errors.meaning}
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-
-          {/* Example */}
           <Grid size={{ xs: 12 }}>
             <TextField
               label="Câu ví dụ"
@@ -200,13 +219,11 @@ export default function AddWordModal({
               multiline
               rows={3}
               value={form.example}
-              onChange={handleChange("example")}
+              onChange={set("example")}
               placeholder="Viết một câu ví dụ bằng tiếng Anh…"
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-
-          {/* Note */}
           <Grid size={{ xs: 12 }}>
             <TextField
               label="Ghi chú của bạn"
@@ -215,7 +232,7 @@ export default function AddWordModal({
               multiline
               rows={2}
               value={form.note}
-              onChange={handleChange("note")}
+              onChange={set("note")}
               placeholder="Bạn gặp từ này ở đâu? Cách nhớ từ này…"
               InputLabelProps={{ shrink: true }}
             />
@@ -229,6 +246,10 @@ export default function AddWordModal({
           variant="contained"
           onClick={handleSave}
           disableElevation
+          disabled={saving}
+          startIcon={
+            saving ? <CircularProgress size={16} color="inherit" /> : undefined
+          }
           sx={{
             py: 1.25,
             fontSize: "14px",
@@ -236,7 +257,7 @@ export default function AddWordModal({
             "&:hover": { bgcolor: "primary.dark" },
           }}
         >
-          Lưu từ vựng
+          {saving ? "Đang lưu…" : "Lưu từ vựng"}
         </Button>
       </DialogActions>
     </Dialog>

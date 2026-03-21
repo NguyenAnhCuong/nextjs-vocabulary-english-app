@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Box,
   Tabs,
@@ -18,24 +18,70 @@ import LevelTab from "./subcomponents/LevelTab";
 import FavouriteTab from "./subcomponents/FavouriteTab";
 import OwnWordsTab from "./subcomponents/OwnWordsTab";
 import AddWordModal from "./subcomponents/AddWordModal";
+import ProgressStatsBar from "./subcomponents/ProgressStatsBar";
+import type { VocabPageData } from "@/services/vocabulary.service";
+import type { WordProgressStats } from "@/types/vocabulary";
+import { useOwnWords } from "../hooks/useVocabulary";
 
 interface TabItem {
   label: string;
   icon: string;
-  count: number;
 }
 
 const TABS: TabItem[] = [
-  { label: "Theo Chủ Đề", icon: "📂", count: 12 },
-  { label: "Theo Cấp Độ", icon: "📊", count: 6 },
-  { label: "Yêu Thích", icon: "⭐", count: 24 },
-  { label: "Từ Của Tôi", icon: "✏️", count: 8 },
+  { label: "Theo Chủ Đề", icon: "📂" },
+  { label: "Theo Cấp Độ", icon: "📊" },
+  { label: "Yêu Thích", icon: "⭐" },
+  { label: "Từ Của Tôi", icon: "✏️" },
 ];
 
-export default function VocabularyPage() {
+interface VocabularyPageProps {
+  data: VocabPageData;
+}
+
+export default function VocabularyPage({ data }: VocabularyPageProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
+
+  // progressStats là state để cập nhật sau khi addWord thành công
+  const [progressStats, setProgressStats] = useState<WordProgressStats | null>(
+    data.progressStats,
+  );
+
+  // Fetch lại stats — gọi ngay sau khi backend tạo xong UserWord + WordProgress
+  const refreshStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/proxy/word-progress/stats");
+      const json = await res.json();
+      if (json?.data) setProgressStats(json.data);
+    } catch {
+      // Stats lỗi không block UI
+    }
+  }, []);
+
+  // Own words có thể mutate client-side
+  const {
+    words: ownWords,
+    addWord,
+    deleteWord,
+    updateWord,
+    saving,
+  } = useOwnWords(data.ownWords, refreshStats, refreshStats); // ← refreshStats chạy sau addWord thành công (data.ownWords,onWordAdded?,onWordDeleted?)
+
+  // Count cho từng tab — "Từ Của Tôi" đọc từ live state để cập nhật sau khi thêm/xoá
+  const getTabCount = (index: number) => {
+    if (index === 0) return data.topics.length;
+    if (index === 1) return 6;
+    if (index === 2) return data.favourites.length;
+    if (index === 3) return ownWords.length;
+    return 0;
+  };
+
+  const handleSaveWord = async (dto: Parameters<typeof addWord>[0]) => {
+    await addWord(dto);
+    setModalOpen(false);
+  };
 
   return (
     <Box
@@ -44,7 +90,6 @@ export default function VocabularyPage() {
         flexDirection: "column",
         height: "100%",
         bgcolor: "background.default",
-        fontFamily: "'Be Vietnam Pro', sans-serif",
       }}
     >
       {/* ── Top bar ──────────────────────────────────────────── */}
@@ -102,6 +147,11 @@ export default function VocabularyPage() {
         </Stack>
       </Box>
 
+      {/* ── Progress stats bar ───────────────────────────────── */}
+      {progressStats && progressStats.total > 0 && (
+        <ProgressStatsBar stats={progressStats} />
+      )}
+
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <Box
         sx={{
@@ -131,7 +181,7 @@ export default function VocabularyPage() {
                   <span>{tab.icon}</span>
                   <span>{tab.label}</span>
                   <Chip
-                    label={tab.count}
+                    label={getTabCount(i)}
                     size="small"
                     sx={{
                       height: 18,
@@ -153,19 +203,17 @@ export default function VocabularyPage() {
       </Box>
 
       {/* ── Content ──────────────────────────────────────────── */}
-      <Box
-        sx={{
-          flex: 1,
-          overflow: "auto",
-          px: { xs: 2, md: 3 },
-          py: 2.5,
-        }}
-      >
-        {activeTab === 0 && <TopicTab />}
-        {activeTab === 1 && <LevelTab />}
-        {activeTab === 2 && <FavouriteTab />}
+      <Box sx={{ flex: 1, overflow: "auto", px: { xs: 2, md: 3 }, py: 2.5 }}>
+        {activeTab === 0 && <TopicTab topics={data.topics} search={search} />}
+        {activeTab === 1 && <LevelTab levelGroups={data.levelGroups} />}
+        {activeTab === 2 && <FavouriteTab initialFavs={data.favourites} />}
         {activeTab === 3 && (
-          <OwnWordsTab onAddWord={() => setModalOpen(true)} />
+          <OwnWordsTab
+            words={ownWords}
+            onAddWord={() => setModalOpen(true)}
+            onDeleteWord={deleteWord}
+            onUpdateWord={updateWord}
+          />
         )}
       </Box>
 
@@ -173,10 +221,8 @@ export default function VocabularyPage() {
       <AddWordModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSave={(word) => {
-          console.log("Saved word:", word);
-          // integrate with your state/API here
-        }}
+        onSave={handleSaveWord}
+        saving={saving}
       />
     </Box>
   );
