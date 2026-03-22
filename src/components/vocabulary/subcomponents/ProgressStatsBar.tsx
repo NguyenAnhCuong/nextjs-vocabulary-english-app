@@ -1,4 +1,4 @@
-// src/components/learning/subcomponents/ProgressStatsBar.tsx
+// src/components/vocabulary/subcomponents/ProgressStatsBar.tsx
 "use client";
 
 import { Box, Stack, Typography, LinearProgress, Tooltip } from "@mui/material";
@@ -9,16 +9,15 @@ interface ProgressStatsBarProps {
 }
 
 const STAT_ITEMS = [
-  { key: "NEW",       label: "Chưa học",  color: "#b0b0aa", bg: "#f1efe8" },
-  { key: "LEARNING",  label: "Đang học",  color: "#f57f17", bg: "#fff8e1" },
-  { key: "REVIEWING", label: "Ôn tập",    color: "#1565c0", bg: "#e3f2fd" },
-  { key: "MASTERED",  label: "Đã thuộc",  color: "#2e7d32", bg: "#e8f5e9" },
+  { key: "NEW", label: "Chưa học", color: "#b0b0aa", bg: "#f1efe8" },
+  { key: "LEARNING", label: "Đang học", color: "#f57f17", bg: "#fff8e1" },
+  { key: "REVIEWING", label: "Ôn tập", color: "#1565c0", bg: "#e3f2fd" },
+  { key: "MASTERED", label: "Đã thuộc", color: "#2e7d32", bg: "#e8f5e9" },
 ] as const;
 
 export default function ProgressStatsBar({ stats }: ProgressStatsBarProps) {
-  const masteredPct = stats.total > 0
-    ? Math.round((stats.MASTERED / stats.total) * 100)
-    : 0;
+  const masteredPct =
+    stats.total > 0 ? Math.round((stats.MASTERED / stats.total) * 100) : 0;
 
   return (
     <Box
@@ -43,13 +42,24 @@ export default function ProgressStatsBar({ stats }: ProgressStatsBarProps) {
             <Tooltip key={key} title={label} arrow>
               <Box
                 sx={{
-                  display: "flex", alignItems: "center", gap: 0.75,
-                  bgcolor: bg, borderRadius: 1.5, px: 1.25, py: 0.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  bgcolor: bg,
+                  borderRadius: 1.5,
+                  px: 1.25,
+                  py: 0.5,
                   cursor: "default",
                 }}
               >
                 <Box
-                  sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: color, flexShrink: 0 }}
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: color,
+                    flexShrink: 0,
+                  }}
                 />
                 <Typography fontSize="12px" fontWeight={600} color={color}>
                   {stats[key]}
@@ -65,12 +75,25 @@ export default function ProgressStatsBar({ stats }: ProgressStatsBarProps) {
             <Tooltip title="Số từ cần ôn tập hôm nay" arrow>
               <Box
                 sx={{
-                  display: "flex", alignItems: "center", gap: 0.75,
-                  bgcolor: "#fce4ec", borderRadius: 1.5, px: 1.25, py: 0.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  bgcolor: "#fce4ec",
+                  borderRadius: 1.5,
+                  px: 1.25,
+                  py: 0.5,
                   cursor: "default",
                 }}
               >
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#c62828", flexShrink: 0 }} />
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: "#c62828",
+                    flexShrink: 0,
+                  }}
+                />
                 <Typography fontSize="12px" fontWeight={600} color="#c62828">
                   {stats.due}
                 </Typography>
@@ -83,17 +106,33 @@ export default function ProgressStatsBar({ stats }: ProgressStatsBarProps) {
         </Stack>
 
         {/* Right: overall progress bar */}
-        <Stack direction="row" alignItems="center" spacing={1.5} minWidth={200} sx={{ flexShrink: 0 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.5}
+          minWidth={200}
+          sx={{ flexShrink: 0 }}
+        >
           <LinearProgress
             variant="determinate"
             value={masteredPct}
             sx={{
-              flex: 1, height: 6, borderRadius: 3,
+              flex: 1,
+              height: 6,
+              borderRadius: 3,
               bgcolor: "rgba(0,0,0,0.07)",
-              "& .MuiLinearProgress-bar": { bgcolor: "#2e7d32", borderRadius: 3 },
+              "& .MuiLinearProgress-bar": {
+                bgcolor: "#2e7d32",
+                borderRadius: 3,
+              },
             }}
           />
-          <Typography fontSize="12px" fontWeight={600} color="text.secondary" minWidth={60}>
+          <Typography
+            fontSize="12px"
+            fontWeight={600}
+            color="text.secondary"
+            minWidth={60}
+          >
             {masteredPct}% thuộc ({stats.total} từ)
           </Typography>
         </Stack>

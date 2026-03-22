@@ -61,7 +61,6 @@ export const authOptions: AuthOptions = {
         });
 
         const data = await res.json();
-        console.log(data);
 
         if (res.ok && data?.data) return data.data; // Trả về object chứa {access_token, refreshToken, user}
         return null;

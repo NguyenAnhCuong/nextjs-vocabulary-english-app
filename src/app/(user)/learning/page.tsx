@@ -4,7 +4,7 @@
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import { fetchVocabPageData } from "@/services/vocabulary.service";
-import VocabularyPage from "@/components/learning/Vocabulary";
+import VocabularyPage from "@/components/vocabulary/Vocabulary";
 
 export const metadata = {
   title: "Học Từ Vựng | WordWise",

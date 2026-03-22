@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   Box,
   Tabs,
@@ -20,7 +20,7 @@ import OwnWordsTab from "./subcomponents/OwnWordsTab";
 import AddWordModal from "./subcomponents/AddWordModal";
 import ProgressStatsBar from "./subcomponents/ProgressStatsBar";
 import type { VocabPageData } from "@/services/vocabulary.service";
-import type { WordProgressStats } from "@/types/vocabulary";
+import type { WordProgressStats, Topic, LevelGroup } from "@/types/vocabulary";
 import { useOwnWords } from "../hooks/useVocabulary";
 
 interface TabItem {
@@ -49,14 +49,93 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
     data.progressStats,
   );
 
+  // topics + levelGroups là state để cập nhật sau khi hoàn thành 1 session học
+  const [topics, setTopics] = useState<Topic[]>(data.topics);
+  const [levelGroups, setLevelGroups] = useState<LevelGroup[]>(
+    data.levelGroups,
+  );
+
   // Fetch lại stats — gọi ngay sau khi backend tạo xong UserWord + WordProgress
   const refreshStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/proxy/word-progress/stats");
+      const res = await fetch(
+        `/api/proxy/word-progress/stats?_t=${Date.now()}`,
+        {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
       const json = await res.json();
       if (json?.data) setProgressStats(json.data);
     } catch {
       // Stats lỗi không block UI
+    }
+  }, []);
+
+  // Refresh progress của topics + levels sau khi hoàn thành session học
+  const refreshProgress = useCallback(async () => {
+    try {
+      const t = Date.now();
+      const [topicsRes, topicProgRes, levelProgRes, statsRes] =
+        await Promise.allSettled([
+          fetch(
+            `/api/proxy/topics?current=1&pageSize=100&onlyActive=true&_t=${t}`,
+            { cache: "no-store" },
+          ),
+          fetch(`/api/proxy/word-progress/all-topics?_t=${t}`, {
+            cache: "no-store",
+          }),
+          fetch(`/api/proxy/word-progress/all-levels?_t=${t}`, {
+            cache: "no-store",
+          }),
+          fetch(`/api/proxy/word-progress/stats?_t=${t}`, {
+            cache: "no-store",
+          }),
+        ]);
+
+      // Update topics với progress mới
+      if (
+        topicsRes.status === "fulfilled" &&
+        topicProgRes.status === "fulfilled"
+      ) {
+        const topicsJson = await topicsRes.value.json();
+        const progJson = await topicProgRes.value.json();
+        const progressMap: Record<string, { progressPct: number }> =
+          progJson?.data ?? {};
+        const newTopics: Topic[] = (topicsJson?.data?.result ?? []).map(
+          (item: any) => ({
+            id: item.id,
+            name: item.name,
+            emoji: item.emoji ?? "📁",
+            count: item.wordCount ?? item._count?.wordTopics ?? 0,
+            progress: progressMap[item.id]?.progressPct ?? 0,
+            color: item.color ?? "#6c8fff",
+            isNew: false,
+          }),
+        );
+        if (newTopics.length > 0) setTopics(newTopics);
+      }
+
+      // Update levelGroups với learnedWords mới
+      if (levelProgRes.status === "fulfilled") {
+        const levelJson = await levelProgRes.value.json();
+        const levelMap: Record<string, { learnedWords: number }> =
+          levelJson?.data ?? {};
+        setLevelGroups((prev) =>
+          prev.map((grp) => ({
+            ...grp,
+            learnedWords: levelMap[grp.level]?.learnedWords ?? grp.learnedWords,
+          })),
+        );
+      }
+
+      // Update stats
+      if (statsRes.status === "fulfilled") {
+        const statsJson = await statsRes.value.json();
+        if (statsJson?.data) setProgressStats(statsJson.data);
+      }
+    } catch {
+      // Silent fail
     }
   }, []);
 
@@ -67,11 +146,11 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
     deleteWord,
     updateWord,
     saving,
-  } = useOwnWords(data.ownWords, refreshStats, refreshStats); // ← refreshStats chạy sau addWord thành công (data.ownWords,onWordAdded?,onWordDeleted?)
+  } = useOwnWords(data.ownWords, refreshStats, refreshStats); // ← refreshStats chạy sau add/delete thành công
 
   // Count cho từng tab — "Từ Của Tôi" đọc từ live state để cập nhật sau khi thêm/xoá
   const getTabCount = (index: number) => {
-    if (index === 0) return data.topics.length;
+    if (index === 0) return topics.length;
     if (index === 1) return 6;
     if (index === 2) return data.favourites.length;
     if (index === 3) return ownWords.length;

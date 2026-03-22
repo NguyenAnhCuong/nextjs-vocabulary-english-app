@@ -33,19 +33,41 @@ function getDaysAgo(dateStr: string | null): number | "today" {
 
 // ── Topics ────────────────────────────────────────────────────────────────────
 
+export interface TopicProgressMap {
+  [topicId: string]: {
+    progressPct: number;
+    learnedWords: number;
+    totalWords: number;
+  };
+}
+
+export async function fetchTopicProgressMap(): Promise<TopicProgressMap> {
+  try {
+    const res = await serverFetch<ApiResponse<TopicProgressMap>>(
+      "/word-progress/all-topics",
+    );
+    return res.data ?? {};
+  } catch {
+    return {};
+  }
+}
+
 export async function fetchTopics(): Promise<Topic[]> {
   try {
-    const res = await serverFetch<ApiResponse<PaginatedData<TopicApiItem>>>(
-      "/topics?current=1&pageSize=100&onlyActive=true",
-    );
+    const [topicsRes, progressMap] = await Promise.all([
+      serverFetch<ApiResponse<PaginatedData<TopicApiItem>>>(
+        "/topics?current=1&pageSize=100&onlyActive=true",
+      ),
+      fetchTopicProgressMap(),
+    ]);
 
     return (
-      res.data?.result?.map((item) => ({
+      topicsRes.data?.result?.map((item) => ({
         id: item.id,
         name: item.name,
         emoji: item.emoji ?? "📁",
         count: item.wordCount ?? 0,
-        progress: 0, // Tính tiến độ riêng nếu backend hỗ trợ
+        progress: progressMap[item.id]?.progressPct ?? 0,
         color: item.color ?? "#6c8fff",
         isNew: false,
       })) ?? []
@@ -66,31 +88,52 @@ export async function fetchLevelGroups(): Promise<LevelGroup[]> {
     ),
   );
 
-  // Lấy tiến độ của user cho tất cả từ
+  // Lấy tiến độ theo level từ API mới (nhanh hơn fetch 2000 records)
+  let levelProgressMap: Record<
+    string,
+    { learnedWords: number; masteredWords: number }
+  > = {};
   let progressMap = new Map<string, { status: string }>();
   try {
-    const progRes = await serverFetch<ApiResponse<PaginatedData<WordProgressApiItem>>>(
-      "/word-progress?current=1&pageSize=2000",
-    );
-    progRes.data?.result?.forEach((p) => {
-      if (p.wordId) progressMap.set(p.wordId, { status: p.status });
-    });
+    const [levelRes, progRes] = await Promise.allSettled([
+      serverFetch<
+        ApiResponse<
+          Record<string, { learnedWords: number; masteredWords: number }>
+        >
+      >("/word-progress/all-levels"),
+      serverFetch<ApiResponse<PaginatedData<WordProgressApiItem>>>(
+        "/word-progress?current=1&pageSize=2000",
+      ),
+    ]);
+    if (levelRes.status === "fulfilled")
+      levelProgressMap = levelRes.value?.data ?? {};
+    if (progRes.status === "fulfilled") {
+      progRes.value?.data?.result?.forEach((p) => {
+        if (p.wordId) progressMap.set(p.wordId, { status: p.status });
+      });
+    }
   } catch {
-    // Bỏ qua lỗi, tiếp tục với progressMap rỗng
+    // Bỏ qua lỗi
   }
 
   return levels.map((level, idx) => {
     const meta = LEVEL_META[level];
     const settled = results[idx];
     const words: WordApiItem[] =
-      settled.status === "fulfilled" ? settled.value?.data ?? [] : [];
+      settled.status === "fulfilled" ? (settled.value?.data ?? []) : [];
 
-    const masteredIds = new Set(
-      [...progressMap.entries()]
-        .filter(([, v]) => v.status === "MASTERED")
-        .map(([k]) => k),
-    );
-    const learnedWords = words.filter((w) => masteredIds.has(w.id)).length;
+    // Ưu tiên dùng levelProgressMap (từ API all-levels), fallback về progressMap
+    const levelData = levelProgressMap[level];
+    const learnedWords = levelData
+      ? levelData.learnedWords
+      : (() => {
+          const masteredIds = new Set(
+            [...progressMap.entries()]
+              .filter(([, v]) => v.status === "MASTERED")
+              .map(([k]) => k),
+          );
+          return words.filter((w) => masteredIds.has(w.id)).length;
+        })();
 
     const miniWords: MiniWord[] = words.slice(0, 8).map((w) => ({
       id: w.id,
@@ -141,7 +184,9 @@ export async function fetchFavourites(): Promise<VocabWord[]> {
               level: w.level,
               meaning: w.meaning,
               example: w.example ?? "",
-              topic: firstTopic ? `${firstTopic.emoji ?? ""} ${firstTopic.name}`.trim() : "",
+              topic: firstTopic
+                ? `${firstTopic.emoji ?? ""} ${firstTopic.name}`.trim()
+                : "",
               topicColor,
               topicBg,
               reviewedDaysAgo: "today",
@@ -187,16 +232,18 @@ export async function fetchUserWords(): Promise<OwnWord[]> {
     );
 
     return (
-      res.data?.result?.map((w): OwnWord => ({
-        id: w.id,
-        en: w.en,
-        phonetic: w.phonetic ?? "",
-        type: WORD_TYPE_LABEL[w.type] ?? w.type,
-        meaning: w.meaning,
-        note: w.note ?? "",
-        addedDate: new Date(w.createdAt).toLocaleDateString("vi-VN"),
-        status: w.wordProgress?.status,
-      })) ?? []
+      res.data?.result?.map(
+        (w): OwnWord => ({
+          id: w.id,
+          en: w.en,
+          phonetic: w.phonetic ?? "",
+          type: WORD_TYPE_LABEL[w.type] ?? w.type,
+          meaning: w.meaning,
+          note: w.note ?? "",
+          addedDate: new Date(w.createdAt).toLocaleDateString("vi-VN"),
+          status: w.wordProgress?.status,
+        }),
+      ) ?? []
     );
   } catch {
     return [];
@@ -233,9 +280,8 @@ export async function fetchDashboard(): Promise<DashboardStats | null> {
 
 export async function fetchTodayGoals(): Promise<UserGoalApiItem[]> {
   try {
-    const res = await serverFetch<ApiResponse<UserGoalApiItem[]>>(
-      "/user-goals/today",
-    );
+    const res =
+      await serverFetch<ApiResponse<UserGoalApiItem[]>>("/user-goals/today");
     return res.data ?? [];
   } catch {
     return [];

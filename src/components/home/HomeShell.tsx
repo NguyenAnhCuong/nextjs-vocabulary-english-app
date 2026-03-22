@@ -27,7 +27,7 @@ import { useSession } from "next-auth/react";
 
 type NavKey =
   | "dashboard"
-  | "health-record"
+  | "vocabulary"
   | "activity"
   | "statistics"
   | "goals"
@@ -199,7 +199,6 @@ function IconLogout({ className }: { className?: string }) {
 
 export default function HomeShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  console.log(session);
 
   const items: NavItem[] = useMemo(
     () => [
@@ -212,7 +211,7 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
         icon: IconGrid,
       },
       {
-        key: "health-record",
+        key: "vocabulary",
         label: "Học Từ Vựng",
         description: "Xây dựng vốn từ vựng với các bài học.",
         group: "Study",

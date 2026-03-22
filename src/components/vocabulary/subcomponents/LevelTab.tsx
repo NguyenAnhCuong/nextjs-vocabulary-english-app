@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Stack,
@@ -13,6 +14,7 @@ import {
   Grid,
   Paper,
   IconButton,
+  Button,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
@@ -25,9 +27,13 @@ const FILTERS = ["Tất cả từ", "Chưa học", "Đang học", "Đã thuộc"
 
 interface LevelTabProps {
   levelGroups: LevelGroup[];
+  onSessionComplete?: () => void;
 }
 
-export default function LevelTab({ levelGroups }: LevelTabProps) {
+export default function LevelTab({
+  levelGroups,
+  onSessionComplete,
+}: LevelTabProps) {
   const [filter, setFilter] = useState("Tất cả từ");
 
   // Tập hợp wordId đã yêu thích từ data server
@@ -39,6 +45,7 @@ export default function LevelTab({ levelGroups }: LevelTabProps) {
   );
 
   const { favIds, toggle } = useFavStar(initialFavIds);
+  const router = useRouter();
 
   if (!levelGroups.length) {
     return (
@@ -305,6 +312,34 @@ export default function LevelTab({ levelGroups }: LevelTabProps) {
                     </Grid>
                   )}
                 </>
+              )}
+
+              {/* Nút bắt đầu học */}
+              {!grp.locked && (
+                <Box
+                  sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}
+                >
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disableElevation
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSessionComplete)
+                        (window as any).__onSessionComplete = onSessionComplete;
+                      router.push(`/learning/level/${grp.level}`);
+                    }}
+                    sx={{
+                      bgcolor: grp.color,
+                      "&:hover": { bgcolor: grp.color, opacity: 0.88 },
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      fontSize: "13px",
+                    }}
+                  >
+                    Học ngay →
+                  </Button>
+                </Box>
               )}
             </AccordionDetails>
           </Accordion>
