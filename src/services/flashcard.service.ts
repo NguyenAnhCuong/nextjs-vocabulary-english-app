@@ -2,7 +2,7 @@
 // Fetch words cho flashcard session theo topic hoặc level
 
 import { serverFetch, ApiResponse, PaginatedData } from "@/lib/api";
-import type { FlashCard } from "@/types/flashcard.types";
+import type { FlashCard } from "@/types/flashcard";
 import type { WordApiItem, CefrLevel } from "@/types/vocabulary";
 import { WORD_TYPE_LABEL as WTL } from "@/types/vocabulary";
 

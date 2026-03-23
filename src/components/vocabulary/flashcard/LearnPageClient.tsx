@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import StartSessionDialog from "./StartSessionDialog";
 import FlashCardSession from "./FlashCardSession";
-import type { FlashCard, SessionSource } from "@/types/flashcard.types";
-import { loadSessionProgress } from "@/types/flashcard.types";
+import type { FlashCard, SessionSource } from "@/types/flashcard";
+import { loadSessionProgress } from "@/types/flashcard";
 
 type Phase = "dialog" | "session";
 

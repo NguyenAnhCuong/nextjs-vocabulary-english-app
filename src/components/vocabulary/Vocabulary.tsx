@@ -18,7 +18,6 @@ import LevelTab from "./subcomponents/LevelTab";
 import FavouriteTab from "./subcomponents/FavouriteTab";
 import OwnWordsTab from "./subcomponents/OwnWordsTab";
 import AddWordModal from "./subcomponents/AddWordModal";
-import ProgressStatsBar from "./subcomponents/ProgressStatsBar";
 import type { VocabPageData } from "@/services/vocabulary.service";
 import type { WordProgressStats, Topic, LevelGroup } from "@/types/vocabulary";
 import { useOwnWords } from "../hooks/useVocabulary";
@@ -227,9 +226,9 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
       </Box>
 
       {/* ── Progress stats bar ───────────────────────────────── */}
-      {progressStats && progressStats.total > 0 && (
+      {/* {progressStats && progressStats.total > 0 && (
         <ProgressStatsBar stats={progressStats} />
-      )}
+      )} */}
 
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <Box
@@ -283,8 +282,19 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
 
       {/* ── Content ──────────────────────────────────────────── */}
       <Box sx={{ flex: 1, overflow: "auto", px: { xs: 2, md: 3 }, py: 2.5 }}>
-        {activeTab === 0 && <TopicTab topics={data.topics} search={search} />}
-        {activeTab === 1 && <LevelTab levelGroups={data.levelGroups} />}
+        {activeTab === 0 && (
+          <TopicTab
+            topics={data.topics}
+            search={search}
+            onSessionComplete={refreshProgress}
+          />
+        )}
+        {activeTab === 1 && (
+          <LevelTab
+            levelGroups={data.levelGroups}
+            onSessionComplete={refreshProgress}
+          />
+        )}
         {activeTab === 2 && <FavouriteTab initialFavs={data.favourites} />}
         {activeTab === 3 && (
           <OwnWordsTab

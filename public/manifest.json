@@ -2,7 +2,7 @@
   "name": "Học Từ Vựng",
   "short_name": "WordWise",
   "description": "Học từ vựng tiếng Anh mỗi ngày với flashcard và spaced repetition",
-  "start_url": "/vocabulary",
+  "start_url": "/learning",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a1f2e",
@@ -73,7 +73,7 @@
     {
       "name": "Học từ vựng",
       "short_name": "Từ vựng",
-      "url": "/vocabulary",
+      "url": "/learning",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",
@@ -84,7 +84,7 @@
     {
       "name": "Ôn tập hôm nay",
       "short_name": "Ôn tập",
-      "url": "/vocabulary?tab=2",
+      "url": "/learning?tab=2",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",

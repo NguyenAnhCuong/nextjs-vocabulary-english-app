@@ -13,7 +13,7 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import type { FlashCard } from "@/types/flashcard.types";
+import type { FlashCard } from "@/types/flashcard";
 import { LEVEL_COLORS } from "@/types/vocabulary";
 
 interface FlashCardViewProps {

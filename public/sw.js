@@ -5,7 +5,7 @@ const CACHE_NAME = "wordwise-v1";
 const CACHE_VERSION = 1;
 
 // Các route cache khi install
-const PRECACHE_URLS = ["/", "/vocabulary", "/offline"];
+const PRECACHE_URLS = ["/", "/learning", "/offline"];
 
 // ── Install: precache các trang chính ─────────────────────────────────────────
 self.addEventListener("install", (event) => {
@@ -110,14 +110,14 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
       vibrate: [100, 50, 100],
-      data: { url: data.url ?? "/vocabulary" },
+      data: { url: data.url ?? "/learning" },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url ?? "/vocabulary";
+  const url = event.notification.data?.url ?? "/learning";
   event.waitUntil(
     clients.matchAll({ type: "window" }).then((clientList) => {
       for (const client of clientList) {

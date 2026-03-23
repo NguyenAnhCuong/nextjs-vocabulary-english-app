@@ -1,27 +1,25 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Box,
   Stack,
   Typography,
   IconButton,
   LinearProgress,
+  Chip,
   Button,
   Tooltip,
   Fade,
+  CircularProgress,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ShuffleIcon from "@mui/icons-material/Shuffle";
-import {
-  clearSessionProgress,
-  saveSessionProgress,
-  type FlashCard,
-  type SessionSource,
-} from "@/types/flashcard.types";
+import type { FlashCard, SessionSource } from "@/types/flashcard";
+import { saveSessionProgress, clearSessionProgress } from "@/types/flashcard";
 import FlashCardView from "./FlashCardView";
 import QualityButtons from "./QualityButtons";
 import { LEVEL_COLORS } from "@/types/vocabulary";
@@ -63,9 +61,6 @@ export default function FlashCardSession({
   const [sessionDone, setSessionDone] = useState(false);
   const [shuffled, setShuffled] = useState(false);
 
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-
   const card = cards[currentIndex];
   const total = cards.length;
   const progress = total > 0 ? Math.round((currentIndex / total) * 100) : 0;
@@ -74,23 +69,6 @@ export default function FlashCardSession({
     source.type === "topic"
       ? source.color
       : (LEVEL_COLORS[source.level]?.color ?? "#6c8fff");
-
-  // ── Navigation ─────────────────────────────────────────────────────────────
-  const goNext = useCallback(() => {
-    setIsFlipped(false);
-    if (currentIndex < total - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      setSessionDone(true);
-    }
-  }, [currentIndex, total]);
-
-  const goPrev = useCallback(() => {
-    if (currentIndex > 0) {
-      setIsFlipped(false);
-      setCurrentIndex((i) => i - 1);
-    }
-  }, [currentIndex]);
 
   // ── Auto-save progress khi currentIndex thay đổi ──────────────────────────
   useEffect(() => {
@@ -110,7 +88,27 @@ export default function FlashCardSession({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, total]);
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  const goNext = useCallback(() => {
+    setIsFlipped(false);
+    if (currentIndex < total - 1) {
+      setCurrentIndex((i) => i + 1);
+    } else {
+      setSessionDone(true);
+      // Gọi callback để refresh progress ở VocabularyPage
+      onSessionComplete?.();
+    }
+  }, [currentIndex, total, onSessionComplete]);
+
+  const goPrev = useCallback(() => {
+    if (currentIndex > 0) {
+      setIsFlipped(false);
+      setCurrentIndex((i) => i - 1);
+    }
+  }, [currentIndex]);
 
   // ── Start learning this word (tạo WordProgress nếu chưa có) ───────────────
   useEffect(() => {
@@ -200,7 +198,6 @@ export default function FlashCardSession({
       <SessionComplete
         source={source}
         total={total}
-        reviewedCount={reviewedIds.size}
         accentColor={accentColor}
         onRestart={() => {
           clearSessionProgress(source);
@@ -292,22 +289,6 @@ export default function FlashCardSession({
           py: 3,
           gap: 3,
         }}
-        onTouchStart={(e) => {
-          touchStartX.current = e.touches[0].clientX;
-          touchStartY.current = e.touches[0].clientY;
-        }}
-        onTouchEnd={(e) => {
-          const dx = touchStartX.current - e.changedTouches[0].clientX;
-          const dy = Math.abs(
-            touchStartY.current - e.changedTouches[0].clientY,
-          );
-          // Chỉ nhận swipe ngang (dx > 50px, dy < 30px để không nhầm với scroll)
-          if (Math.abs(dx) > 50 && dy < 30) {
-            if (dx > 0)
-              goNext(); // swipe left → next
-            else goPrev(); // swipe right → prev
-          }
-        }}
       >
         {/* Card */}
         <Box sx={{ width: "100%", maxWidth: 600 }}>
@@ -393,19 +374,56 @@ export default function FlashCardSession({
 function SessionComplete({
   source,
   total,
-  reviewedCount,
   accentColor,
   onRestart,
   onExit,
 }: {
   source: SessionSource;
   total: number;
-  reviewedCount: number;
   accentColor: string;
   onRestart: () => void;
   onExit: () => void;
 }) {
-  const pct = total > 0 ? Math.round((reviewedCount / total) * 100) : 0;
+  const [stats, setStats] = useState<{
+    learnedWords: number;
+    totalWords: number;
+    progressPct: number;
+    notLearnedWords: number;
+  } | null>(null);
+
+  // Fetch stats thực tế từ DB ngay khi màn hình complete xuất hiện
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const endpoint =
+          source.type === "topic"
+            ? `/api/proxy/word-progress/topic/${source.topicId}`
+            : `/api/proxy/word-progress/level/${source.level}`;
+        const res = await fetch(`${endpoint}?_t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        const data = json?.data;
+        if (data) {
+          const learned = data.learnedWords ?? 0;
+          const t = data.totalWords ?? total;
+          setStats({
+            learnedWords: learned,
+            totalWords: t,
+            progressPct: data.progressPct ?? 0,
+            notLearnedWords: t - learned,
+          });
+        }
+      } catch {
+        /* silent */
+      }
+    };
+    fetchStats();
+  }, [source, total]);
+
+  const displayTotal = stats?.totalWords ?? total;
+  const displayLearned = stats?.learnedWords ?? 0;
+  const displayPct = stats?.progressPct ?? 0;
 
   return (
     <Box
@@ -447,17 +465,73 @@ function SessionComplete({
           maxWidth: 360,
         }}
       >
-        <Stack direction="row" justifyContent="space-between" mb={1.5}>
+        {/* 2 chip: Chưa học / Đã học */}
+        <Stack direction="row" spacing={1.5} mb={1.5} alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              bgcolor: "#f1efe8",
+              borderRadius: 1.5,
+              px: 1.25,
+              py: 0.6,
+            }}
+          >
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: "#78716c",
+              }}
+            />
+            <Typography fontSize="13px" fontWeight={700} color="#78716c">
+              {stats?.notLearnedWords ?? "—"}
+            </Typography>
+            <Typography fontSize="12px" color="text.secondary">
+              Chưa học
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              bgcolor: "#e8f5e9",
+              borderRadius: 1.5,
+              px: 1.25,
+              py: 0.6,
+            }}
+          >
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: "#2e7d32",
+              }}
+            />
+            <Typography fontSize="13px" fontWeight={700} color="#2e7d32">
+              {stats ? displayLearned : "—"}
+            </Typography>
+            <Typography fontSize="12px" color="text.secondary">
+              Đã học
+            </Typography>
+          </Box>
+        </Stack>
+
+        <Stack direction="row" justifyContent="space-between" mb={1}>
           <Typography variant="body2" color="text.secondary">
-            Đã ôn tập
+            Tổng tiến độ {source.type === "topic" ? "chủ đề" : "cấp độ"}
           </Typography>
           <Typography variant="body2" fontWeight={600}>
-            {reviewedCount} / {total} từ
+            {displayLearned} / {displayTotal} từ
           </Typography>
         </Stack>
         <LinearProgress
           variant="determinate"
-          value={pct}
+          value={displayPct}
           sx={{
             height: 8,
             borderRadius: 4,
@@ -474,7 +548,8 @@ function SessionComplete({
           mt={0.75}
           display="block"
         >
-          {pct}% thẻ đã được đánh giá
+          {displayPct}% hoàn thành
+          {stats?.notLearnedWords === 0 ? " · đã học hết rồi 🎉" : ""}
         </Typography>
       </Box>
 
