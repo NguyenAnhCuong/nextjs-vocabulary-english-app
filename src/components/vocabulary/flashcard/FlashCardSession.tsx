@@ -249,7 +249,7 @@ export default function FlashCardSession({
               : `${source.level} — ${source.levelName}`}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {currentIndex + 1} / {total} thẻ · {reviewedIds.size} đã ôn
+            {currentIndex + 1} / {total} thẻ · {reviewedIds.size}
           </Typography>
         </Box>
 

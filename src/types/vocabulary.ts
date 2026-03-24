@@ -254,7 +254,9 @@ export interface OwnWord {
   en: string;
   phonetic: string;
   type: string;
+  level?: string; // thêm để EditWordModal pre-fill được
   meaning: string;
+  example?: string; // thêm để EditWordModal pre-fill được
   note: string;
   addedDate: string;
   status?: MemoryStatus;

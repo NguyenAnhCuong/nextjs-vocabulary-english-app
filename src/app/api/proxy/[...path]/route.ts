@@ -43,6 +43,7 @@ async function handler(
     method: req.method,
     headers,
     body,
+    cache: "no-store",
   });
 
   const data = await backendRes.json().catch(() => null);
