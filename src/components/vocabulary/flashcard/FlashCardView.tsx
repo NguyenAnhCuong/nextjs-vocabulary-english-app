@@ -13,8 +13,10 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import GraphicEqIcon from "@mui/icons-material/GraphicEq";
 import type { FlashCard } from "@/types/flashcard";
 import { LEVEL_COLORS } from "@/types/vocabulary";
+import { useSpeech } from "@/components/hooks/useSpeech";
 
 interface FlashCardViewProps {
   card: FlashCard;
@@ -39,11 +41,18 @@ export default function FlashCardView({
 }: FlashCardViewProps) {
   const [flipped, setFlipped] = useState(false);
   const controlled = externalFlipped !== undefined;
+  const {
+    speak,
+    speaking,
+    supported: speechSupported,
+  } = useSpeech({ lang: "en-US", rate: 0.85 });
 
-  // Reset về mặt trước mỗi khi đổi card
+  // Reset về mặt trước + tự đọc từ mỗi khi đổi card
   useEffect(() => {
     setFlipped(false);
     onFlip?.(false);
+    // Auto-speak từ tiếng Anh khi card mới xuất hiện
+    speak(card.en);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
@@ -82,7 +91,6 @@ export default function FlashCardView({
           transformStyle: "preserve-3d",
           transition: "transform 0.55s cubic-bezier(0.4, 0, 0.2, 1)",
           transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-          willChange: "transform",
         }}
       >
         {/* ── Front face (English) ──────────────────────────── */}
@@ -159,7 +167,32 @@ export default function FlashCardView({
             >
               {card.phonetic || ""}
             </Typography>
-            {card.audioUrl && (
+            {/* Nút TTS — dùng Web Speech API, luôn hiện */}
+            {speechSupported && (
+              <Tooltip title={speaking ? "Đang đọc…" : "Nghe phát âm (AI)"}>
+                <IconButton
+                  size="large"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(card.en);
+                  }}
+                  sx={{
+                    p: 0.4,
+                    color: speaking ? "primary.main" : "text.disabled",
+                    "&:hover": { color: "primary.main" },
+                    transition: "color 0.15s",
+                  }}
+                >
+                  {speaking ? (
+                    <GraphicEqIcon sx={{ fontSize: 24 }} />
+                  ) : (
+                    <VolumeUpIcon sx={{ fontSize: 24 }} />
+                  )}
+                </IconButton>
+              </Tooltip>
+            )}
+            {/* Nút audio file nếu có (ưu tiên) */}
+            {card.audioUrl && !speechSupported && (
               <Tooltip title="Nghe phát âm">
                 <IconButton
                   size="small"
@@ -225,7 +258,31 @@ export default function FlashCardView({
               color="text.secondary"
             >
               {card.en}
+              {speechSupported && (
+                <Tooltip title={speaking ? "Đang đọc…" : "Nghe phát âm (AI)"}>
+                  <IconButton
+                    size="large"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      speak(card.en);
+                    }}
+                    sx={{
+                      p: 0.4,
+                      color: speaking ? "primary.main" : "text.disabled",
+                      "&:hover": { color: "primary.main" },
+                      transition: "color 0.15s",
+                    }}
+                  >
+                    {speaking ? (
+                      <GraphicEqIcon sx={{ fontSize: 24 }} />
+                    ) : (
+                      <VolumeUpIcon sx={{ fontSize: 24 }} />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
             </Typography>
+
             <IconButton
               size="small"
               onClick={(e) => {

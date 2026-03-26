@@ -29,6 +29,7 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
 
   const [errorEmail, setErrorEmail] = useState<string>("");
   const [errorPassword, setErrorPassword] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [isErrorEmail, setIsErrorEmail] = useState<boolean>(false);
   const [isErrorPassword, setIsErrorPassword] = useState<boolean>(false);
@@ -36,7 +37,7 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
+    setIsLoading(true);
     setIsErrorEmail(false);
     setIsErrorPassword(false);
     setErrorEmail("");
@@ -72,6 +73,7 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
       }
       showSnackbar(res?.error, "error");
     }
+    setIsLoading(false);
   };
 
   return (
@@ -149,6 +151,7 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
             py: 1,
           }}
           fullWidth
+          loading={isLoading}
         >
           Đăng nhập
         </Button>
@@ -165,6 +168,7 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
           }}
           fullWidth
           onClick={() => signIn("google", { callbackUrl: "/" })}
+          loading={isLoading}
         >
           <GoogleIcon sx={{ mr: 1 }} fontSize="small" />
           Đăng nhập với Google

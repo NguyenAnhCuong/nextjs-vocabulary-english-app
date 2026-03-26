@@ -21,6 +21,7 @@ import AddWordModal from "./subcomponents/AddWordModal";
 import type { VocabPageData } from "@/services/vocabulary.service";
 import type { WordProgressStats, Topic, LevelGroup } from "@/types/vocabulary";
 import { useOwnWords } from "../hooks/useVocabulary";
+import AdminPanel from "../admin/AdminPanel";
 
 interface TabItem {
   label: string;
@@ -36,9 +37,13 @@ const TABS: TabItem[] = [
 
 interface VocabularyPageProps {
   data: VocabPageData;
+  isAdmin?: boolean;
 }
 
-export default function VocabularyPage({ data }: VocabularyPageProps) {
+export default function VocabularyPage({
+  data,
+  isAdmin = false,
+}: VocabularyPageProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -186,7 +191,12 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
           flexShrink: 0,
         }}
       >
-        <Stack direction="row" spacing={1.25} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1.25}
+          justifyContent={"space-between"}
+          alignItems="center"
+        >
           <TextField
             size="small"
             placeholder="Tìm từ vựng…"
@@ -222,6 +232,11 @@ export default function VocabularyPage({ data }: VocabularyPageProps) {
           >
             Thêm từ của bạn
           </Button>
+          {isAdmin && isAdmin === true && (
+            <>
+              <AdminPanel />
+            </>
+          )}
         </Stack>
       </Box>
 

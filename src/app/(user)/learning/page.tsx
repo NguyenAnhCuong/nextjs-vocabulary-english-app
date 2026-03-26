@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import { fetchVocabPageData } from "@/services/vocabulary.service";
 import VocabularyPage from "@/components/vocabulary/Vocabulary";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/auth.options";
 
 export const metadata = {
   title: "Học Từ Vựng | WordWise",
@@ -26,11 +28,18 @@ function VocabSkeleton() {
 
 export default async function VocabPage() {
   // Fetch tất cả dữ liệu song song — topics, levels, favourites, ownWords, stats
-  const data = await fetchVocabPageData();
+  const [data, session] = await Promise.all([
+    fetchVocabPageData(),
+    getServerSession(authOptions),
+  ]);
+
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+
+  console.log(isAdmin);
 
   return (
     <Suspense fallback={<VocabSkeleton />}>
-      <VocabularyPage data={data} />
+      <VocabularyPage data={data} isAdmin={isAdmin} />
     </Suspense>
   );
 }

@@ -27,6 +27,7 @@ export default function RegisterForm({ onSubmit }: RegisterFormProps) {
 
   const [errorEmail, setErrorEmail] = useState<string>("");
   const [errorPassword, setErrorPassword] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [isErrorEmail, setIsErrorEmail] = useState<boolean>(false);
   const [isErrorPassword, setIsErrorPassword] = useState<boolean>(false);
@@ -34,7 +35,7 @@ export default function RegisterForm({ onSubmit }: RegisterFormProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
+    setIsLoading(true);
     setIsErrorEmail(false);
     setIsErrorPassword(false);
     setErrorEmail("");
@@ -74,6 +75,7 @@ export default function RegisterForm({ onSubmit }: RegisterFormProps) {
     } else {
       showSnackbar(data?.message || "Đăng ký thất bại!", "error");
     }
+    setIsLoading(false);
   };
 
   return (
@@ -139,6 +141,7 @@ export default function RegisterForm({ onSubmit }: RegisterFormProps) {
             py: 1,
           }}
           fullWidth
+          loading={isLoading}
         >
           Đăng ký
         </Button>
