@@ -116,13 +116,28 @@ export async function fetchLevelGroups(): Promise<LevelGroup[]> {
     // Bỏ qua lỗi
   }
 
+  // Tính % hoàn thành từng level để xác định lock
+  const UNLOCK_THRESHOLD = 70; // >= 70% là mở khoá
+
+  const pctOf = (lvl: CefrLevel): number => {
+    const data = levelProgressMap[lvl];
+    //@ts-ignore
+    if (!data || data.totalWords === 0) return 0;
+    //@ts-ignore
+    return Math.round((data.learnedWords / data.totalWords) * 100);
+  };
+
+  const a1Done = pctOf("A1") >= UNLOCK_THRESHOLD;
+  const a2Done = pctOf("A2") >= UNLOCK_THRESHOLD;
+  const b1Done = pctOf("B1") >= UNLOCK_THRESHOLD;
+  const b2Done = pctOf("B2") >= UNLOCK_THRESHOLD;
+
   return levels.map((level, idx) => {
     const meta = LEVEL_META[level];
     const settled = results[idx];
     const words: WordApiItem[] =
       settled.status === "fulfilled" ? (settled.value?.data ?? []) : [];
 
-    // Ưu tiên dùng levelProgressMap (từ API all-levels), fallback về progressMap
     const levelData = levelProgressMap[level];
     const learnedWords = levelData
       ? levelData.learnedWords
@@ -135,15 +150,21 @@ export async function fetchLevelGroups(): Promise<LevelGroup[]> {
           return words.filter((w) => masteredIds.has(w.id)).length;
         })();
 
-    const miniWords: MiniWord[] = words.slice(0, 8).map((w) => ({
+    // Lock logic: B1/B2 cần A1+A2 >= 50%, C1/C2 cần thêm B1+B2 >= 50%
+    const locked =
+      level === "B1" || level === "B2"
+        ? !(a1Done && a2Done)
+        : level === "C1" || level === "C2"
+          ? !(a1Done && a2Done && b1Done && b2Done)
+          : false; // A1, A2 luôn mở
+
+    // Tối đa 3 từ preview
+    const miniWords: MiniWord[] = words.slice(0, 4).map((w) => ({
       id: w.id,
       en: w.en,
       vi: w.meaning,
       wordId: w.id,
     }));
-
-    // C2 locked nếu B2 chưa hoàn thành đủ
-    const locked = level === "C2";
 
     return {
       level,
@@ -155,7 +176,6 @@ export async function fetchLevelGroups(): Promise<LevelGroup[]> {
     };
   });
 }
-
 // ── Favourites ────────────────────────────────────────────────────────────────
 
 export async function fetchFavourites(): Promise<VocabWord[]> {

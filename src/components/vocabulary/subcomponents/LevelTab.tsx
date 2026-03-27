@@ -13,15 +13,11 @@ import {
   LinearProgress,
   Grid,
   Paper,
-  IconButton,
   Button,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import StarBorderIcon from "@mui/icons-material/StarBorder";
-import StarIcon from "@mui/icons-material/Star";
 import LockIcon from "@mui/icons-material/Lock";
 import type { LevelGroup } from "@/types/vocabulary";
-import { useFavStar } from "@/components/hooks/useVocabulary";
 
 const FILTERS = ["Tất cả từ", "Chưa học", "Đang học", "Đã thuộc"];
 
@@ -37,14 +33,6 @@ export default function LevelTab({
   const [filter, setFilter] = useState("Tất cả từ");
 
   // Tập hợp wordId đã yêu thích từ data server
-  const initialFavIds = new Set(
-    levelGroups
-      .flatMap((g) => g.words)
-      .filter((w) => w.isFav)
-      .map((w) => w.wordId ?? w.id),
-  );
-
-  const { favIds, toggle } = useFavStar(initialFavIds);
   const router = useRouter();
 
   if (!levelGroups.length) {
@@ -113,82 +101,115 @@ export default function LevelTab({
             <AccordionSummary
               expandIcon={<ExpandMoreIcon />}
               sx={{
-                px: 2.5,
-                py: 1,
-                "&:hover": { bgcolor: "rgba(0,0,0,0.02)" },
+                px: 2,
+                py: 1.5,
                 "& .MuiAccordionSummary-content": {
-                  alignItems: "center",
-                  gap: 2,
-                  my: 1.5,
+                  m: 0,
                 },
               }}
             >
-              <Chip
-                label={grp.level}
-                size="small"
+              <Box
                 sx={{
-                  bgcolor: grp.bgColor,
-                  color: grp.textColor,
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  height: 30,
-                  px: 0.5,
-                  borderRadius: 1,
-                  flexShrink: 0,
+                  display: "flex",
+                  width: "100%",
+                  gap: 1.5,
+                  alignItems: "center",
                 }}
-              />
-              <Box flex={1} minWidth={0}>
-                <Typography fontWeight={600} fontSize="14px">
-                  {grp.nameVi} — {grp.nameEn}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {grp.desc}
-                </Typography>
-              </Box>
-              <Stack
-                direction="row"
-                spacing={3}
-                alignItems="center"
-                sx={{ mr: 1 }}
               >
-                <Box textAlign="right">
-                  <Typography
-                    fontFamily="'Playfair Display', serif"
-                    fontSize={20}
-                    fontWeight={500}
-                    color={grp.textColor}
-                    lineHeight={1}
-                  >
-                    {grp.totalWords}
+                {/* LEVEL CHIP */}
+                <Chip
+                  label={grp.level}
+                  size="small"
+                  sx={{
+                    bgcolor: grp.bgColor,
+                    color: grp.textColor,
+                    fontWeight: 700,
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                  }}
+                />
+
+                {/* MAIN CONTENT */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontWeight={600} fontSize="14px">
+                    {grp.nameVi} — {grp.nameEn}
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    textTransform="uppercase"
-                    letterSpacing="0.05em"
-                  >
-                    Tổng từ
-                  </Typography>
-                </Box>
-                <Box textAlign="right">
-                  <Typography
-                    fontFamily="'Playfair Display', serif"
-                    fontSize={20}
-                    fontWeight={500}
-                    lineHeight={1}
-                  >
-                    {grp.learnedWords}
-                  </Typography>
+
                   <Typography
                     variant="caption"
                     color="text.secondary"
-                    textTransform="uppercase"
-                    letterSpacing="0.05em"
+                    sx={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
                   >
-                    Đã thuộc
+                    {grp.desc}
                   </Typography>
                 </Box>
-              </Stack>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    justifyContent: "center",
+                    gap: 0.5,
+                    minWidth: 80,
+                  }}
+                >
+                  {/* STATS */}
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography
+                      fontSize={15}
+                      fontWeight={600}
+                      color={grp.textColor}
+                    >
+                      {grp.totalWords}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Tổng
+                    </Typography>
+
+                    <Typography fontSize={15} fontWeight={600}>
+                      {grp.learnedWords}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Thuộc
+                    </Typography>
+                  </Stack>
+
+                  {/* BUTTON */}
+                  {!grp.locked && (
+                    <Button
+                      component="div" // ✅ QUAN TRỌNG
+                      size="small"
+                      variant="contained"
+                      onClick={(e) => {
+                        e.stopPropagation(); // ❗ tránh mở accordion
+                        if (onSessionComplete)
+                          (window as any).__onSessionComplete =
+                            onSessionComplete;
+                        router.push(`/learning/level/${grp.level}`);
+                      }}
+                      sx={{
+                        minWidth: 0,
+                        px: 1.5,
+                        py: 0.25,
+                        fontSize: { xs: "11px", sm: "14px" },
+                        borderRadius: 1.5,
+                        bgcolor: grp.color,
+                        "&:hover": { bgcolor: grp.color, opacity: 0.9 },
+                      }}
+                    >
+                      Học ngay
+                    </Button>
+                  )}
+                </Box>
+              </Box>
             </AccordionSummary>
 
             <AccordionDetails
@@ -203,7 +224,9 @@ export default function LevelTab({
                 <Stack direction="row" alignItems="center" spacing={1} mt={1.5}>
                   <LockIcon sx={{ fontSize: 16, color: "text.disabled" }} />
                   <Typography variant="body2" color="text.secondary">
-                    Hoàn thành B2 trước để mở khóa cấp độ này.
+                    {grp.level === "B1" || grp.level === "B2"
+                      ? "Hoàn thành A1 và A2 (≥70%) để mở khoá."
+                      : "Hoàn thành A1, A2, B1 và B2 (≥70%) để mở khoá."}
                   </Typography>
                 </Stack>
               ) : (
@@ -250,7 +273,6 @@ export default function LevelTab({
                   ) : (
                     <Grid container spacing={1}>
                       {grp.words.map((word) => {
-                        const wId = word.wordId ?? word.id;
                         return (
                           <Grid
                             size={{ xs: 6, sm: 4, md: 3, lg: 2 }}
@@ -269,29 +291,6 @@ export default function LevelTab({
                                 position: "relative",
                               }}
                             >
-                              <IconButton
-                                size="small"
-                                onClick={() => toggle(wId)}
-                                sx={{
-                                  position: "absolute",
-                                  top: 4,
-                                  right: 4,
-                                  p: 0.25,
-                                  color: favIds.has(wId)
-                                    ? "#f5b342"
-                                    : "text.disabled",
-                                  "&:hover": {
-                                    color: "#f5b342",
-                                    bgcolor: "transparent",
-                                  },
-                                }}
-                              >
-                                {favIds.has(wId) ? (
-                                  <StarIcon sx={{ fontSize: 14 }} />
-                                ) : (
-                                  <StarBorderIcon sx={{ fontSize: 14 }} />
-                                )}
-                              </IconButton>
                               <Typography
                                 fontWeight={600}
                                 fontSize="13px"
@@ -312,34 +311,6 @@ export default function LevelTab({
                     </Grid>
                   )}
                 </>
-              )}
-
-              {/* Nút bắt đầu học */}
-              {!grp.locked && (
-                <Box
-                  sx={{ mt: 2, display: "flex", justifyContent: "flex-end" }}
-                >
-                  <Button
-                    variant="contained"
-                    size="small"
-                    disableElevation
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onSessionComplete)
-                        (window as any).__onSessionComplete = onSessionComplete;
-                      router.push(`/learning/level/${grp.level}`);
-                    }}
-                    sx={{
-                      bgcolor: grp.color,
-                      "&:hover": { bgcolor: grp.color, opacity: 0.88 },
-                      borderRadius: 2,
-                      fontWeight: 600,
-                      fontSize: "13px",
-                    }}
-                  >
-                    Học ngay →
-                  </Button>
-                </Box>
               )}
             </AccordionDetails>
           </Accordion>

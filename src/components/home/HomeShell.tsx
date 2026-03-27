@@ -198,7 +198,7 @@ function IconLogout({ className }: { className?: string }) {
 }
 
 export default function HomeShell({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const items: NavItem[] = useMemo(
     () => [
@@ -247,14 +247,17 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
       },
       {
         key: "profile",
-        label: `${session?.user?.name || "Hồ Sơ Cá Nhân"}`,
+        label:
+          status === "loading"
+            ? "Hồ Sơ Cá Nhân"
+            : session?.user?.name || "Hồ Sơ Cá Nhân",
         description: "Quản lý tài khoản và tùy chọn của bạn.",
         group: "User",
         icon: IconUser,
         path: "/profile",
       },
     ],
-    [],
+    [session, status],
   );
 
   const router = useRouter();
@@ -271,7 +274,9 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+    noSsr: true,
+  });
 
   const handleNavigate = (item: NavItem) => {
     setActive(item.key);

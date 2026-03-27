@@ -192,12 +192,13 @@ export default function VocabularyPage({
         }}
       >
         <Stack
-          direction="row"
+          direction={{ xs: "column", sm: "row" }}
           spacing={1.25}
-          justifyContent={"space-between"}
-          alignItems="center"
+          alignItems={{ xs: "stretch", sm: "center" }}
+          width="100%"
         >
           <TextField
+            id="search-input"
             size="small"
             placeholder="Tìm từ vựng…"
             value={search}
@@ -210,7 +211,7 @@ export default function VocabularyPage({
               ),
             }}
             sx={{
-              minWidth: 200,
+              width: { xs: "100%", sm: 220 },
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
                 fontSize: "13px",

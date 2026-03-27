@@ -143,6 +143,8 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
         <Button
           type="submit"
           variant="contained"
+          fullWidth
+          disabled={isLoading}
           sx={{
             mt: 1,
             borderRadius: 999,
@@ -150,10 +152,8 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
             fontWeight: 600,
             py: 1,
           }}
-          fullWidth
-          loading={isLoading}
         >
-          Đăng nhập
+          {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
         </Button>
 
         <Divider sx={{ my: 2 }}>Hoặc</Divider>
@@ -168,10 +168,10 @@ export default function LoginForm({ onSubmit }: LoginFormProps) {
           }}
           fullWidth
           onClick={() => signIn("google", { callbackUrl: "/" })}
-          loading={isLoading}
+          disabled={isLoading}
         >
           <GoogleIcon sx={{ mr: 1 }} fontSize="small" />
-          Đăng nhập với Google
+          {isLoading ? "Đang đăng nhập với Google..." : "Đăng nhập với Google"}
         </Button>
       </Box>
     </>

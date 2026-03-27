@@ -141,9 +141,9 @@ export default function RegisterForm({ onSubmit }: RegisterFormProps) {
             py: 1,
           }}
           fullWidth
-          loading={isLoading}
+          disabled={isLoading}
         >
-          Đăng ký
+          {isLoading ? "Đang đăng ký..." : "Đăng ký"}
         </Button>
       </Box>
       <Box

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -64,6 +64,7 @@ export default function AddWordModal({
   saving = false,
 }: AddWordModalProps) {
   const [form, setForm] = useState<SaveDto>(defaultForm);
+  const id = useId();
   const [errors, setErrors] = useState<Partial<Record<keyof SaveDto, string>>>(
     {},
   );
@@ -135,6 +136,7 @@ export default function AddWordModal({
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
+              id={id}
               label="Từ tiếng Anh *"
               fullWidth
               size="small"
@@ -148,6 +150,7 @@ export default function AddWordModal({
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
+              id={id}
               label="Phiên âm"
               fullWidth
               size="small"
@@ -200,6 +203,7 @@ export default function AddWordModal({
 
           <Grid size={{ xs: 12 }}>
             <TextField
+              id={id}
               label="Nghĩa tiếng Việt *"
               fullWidth
               size="small"
@@ -213,6 +217,7 @@ export default function AddWordModal({
           </Grid>
           <Grid size={{ xs: 12 }}>
             <TextField
+              id={id}
               label="Câu ví dụ"
               fullWidth
               size="small"
@@ -226,6 +231,7 @@ export default function AddWordModal({
           </Grid>
           <Grid size={{ xs: 12 }}>
             <TextField
+              id={id}
               label="Ghi chú của bạn"
               fullWidth
               size="small"

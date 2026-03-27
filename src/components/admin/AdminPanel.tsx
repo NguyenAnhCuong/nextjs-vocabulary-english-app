@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import {
   Drawer,
   Box,
@@ -439,6 +439,7 @@ function TopicFormDialog({
   onSave: (dto: any) => void;
   saving: boolean;
 }) {
+  const id = useId();
   const [form, setForm] = useState({
     name: "",
     emoji: "📚",
@@ -488,6 +489,7 @@ function TopicFormDialog({
       <DialogContent sx={{ pt: 1 }}>
         <Stack spacing={2}>
           <TextField
+            id={id}
             label="Tên chủ đề *"
             size="small"
             fullWidth
@@ -617,6 +619,7 @@ function WordsManager() {
   const [total, setTotal] = useState(0);
 
   const router = useRouter();
+  const id = useId();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -702,6 +705,7 @@ function WordsManager() {
         alignItems="flex-start"
       >
         <TextField
+          id={id}
           size="small"
           placeholder="Tìm từ…"
           value={search}
@@ -969,6 +973,7 @@ function WordFormDialog({
     topicIds: [] as string[],
   };
   const [form, setForm] = useState(blank);
+  const id = useId();
 
   useEffect(() => {
     if (word) {
@@ -1021,6 +1026,7 @@ function WordFormDialog({
         <Stack spacing={2}>
           <Stack direction="row" spacing={1.5}>
             <TextField
+              id={id}
               label="Từ tiếng Anh *"
               size="small"
               sx={{ flex: 1 }}
@@ -1029,6 +1035,7 @@ function WordFormDialog({
               InputLabelProps={{ shrink: true }}
             />
             <TextField
+              id={id}
               label="Phiên âm"
               size="small"
               value={form.phonetic}
@@ -1060,6 +1067,7 @@ function WordFormDialog({
             </FormControl>
           </Stack>
           <TextField
+            id={id}
             label="Nghĩa tiếng Việt *"
             size="small"
             fullWidth
@@ -1068,6 +1076,7 @@ function WordFormDialog({
             InputLabelProps={{ shrink: true }}
           />
           <TextField
+            id={id}
             label="Nghĩa tiếng Anh"
             size="small"
             fullWidth
@@ -1076,6 +1085,7 @@ function WordFormDialog({
             InputLabelProps={{ shrink: true }}
           />
           <TextField
+            id={id}
             label="Câu ví dụ (EN)"
             size="small"
             fullWidth
@@ -1086,6 +1096,7 @@ function WordFormDialog({
             InputLabelProps={{ shrink: true }}
           />
           <TextField
+            id={id}
             label="Câu ví dụ (VI)"
             size="small"
             fullWidth
