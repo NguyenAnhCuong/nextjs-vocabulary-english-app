@@ -218,15 +218,15 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
         path: "/learning",
         icon: IconFileText,
       },
-      {
-        key: "activity",
-        label: "Luyện tập",
-        description:
-          "Sử dụng thẻ ghi nhớ và luyện tập câu để tăng khả năng ghi nhớ.",
-        group: "Study",
-        path: "/practice",
-        icon: IconActivity,
-      },
+      // {
+      //   key: "activity",
+      //   label: "Luyện tập",
+      //   description:
+      //     "Sử dụng thẻ ghi nhớ và luyện tập câu để tăng khả năng ghi nhớ.",
+      //   group: "Study",
+      //   path: "/practice",
+      //   icon: IconActivity,
+      // },
       {
         key: "statistics",
         label: "Câu đố",
@@ -236,15 +236,15 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
         path: "/quizzes",
         icon: IconQuiz,
       },
-      {
-        key: "goals",
-        label: "Mục Tiêu",
-        description:
-          "Theo dõi mục tiêu hàng ngày: từ mới, buổi ôn tập và các cột mốc quan trọng..",
-        group: "Progress",
-        path: "/goals",
-        icon: IconTarget,
-      },
+      // {
+      //   key: "goals",
+      //   label: "Mục Tiêu",
+      //   description:
+      //     "Theo dõi mục tiêu hàng ngày: từ mới, buổi ôn tập và các cột mốc quan trọng..",
+      //   group: "Progress",
+      //   path: "/goals",
+      //   icon: IconTarget,
+      // },
       {
         key: "profile",
         label:
