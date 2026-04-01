@@ -1,17 +1,14 @@
 // src/app/(user)/quizzes/create/page.tsx
-// Server Component — admin guard + render create form
-
-import CreateQuizClient from "@/components/quizzes/admin/CreateQuizClient";
 import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/auth.options";
+import CreateQuizClient from "@/components/quizzes/admin/CreateQuizClient";
 
 export const metadata = { title: "Tạo Quiz | WordWise Admin" };
 
 export default async function CreateQuizPage() {
-  // TODO: real admin check
-  // const session = await getServerSession(authOptions);
-  // if ((session?.user as any)?.role !== "ADMIN") redirect("/quizzes");
-  const isAdmin = true;
+  const session = await getServerSession(authOptions);
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   if (!isAdmin) redirect("/quizzes");
-
   return <CreateQuizClient />;
 }

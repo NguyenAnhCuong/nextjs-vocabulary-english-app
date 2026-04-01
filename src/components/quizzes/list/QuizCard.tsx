@@ -10,13 +10,11 @@ import {
   Chip,
   Button,
   Stack,
-  LinearProgress,
   Tooltip,
   IconButton,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EditIcon from "@mui/icons-material/Edit";
-import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
 import type { QuizSummary } from "@/types/quiz";
@@ -136,10 +134,6 @@ export default function QuizCard({ quiz, isAdmin }: QuizCardProps) {
               icon: <TimerOutlinedIcon sx={{ fontSize: 14 }} />,
               text: `${quiz.durationMinutes} phút`,
             },
-            {
-              icon: <PeopleAltIcon sx={{ fontSize: 14 }} />,
-              text: `${quiz.attemptCount} lượt`,
-            },
           ].map(({ icon, text }) => (
             <Stack
               key={text}
@@ -155,48 +149,6 @@ export default function QuizCard({ quiz, isAdmin }: QuizCardProps) {
             </Stack>
           ))}
         </Stack>
-
-        {/* Avg score bar */}
-        {quiz.avgScore !== null && (
-          <Box>
-            <Stack direction="row" justifyContent="space-between" mb={0.5}>
-              <Typography variant="caption" color="text.secondary">
-                Điểm TB
-              </Typography>
-              <Typography
-                variant="caption"
-                fontWeight={700}
-                color={
-                  quiz.avgScore >= 70
-                    ? "success.main"
-                    : quiz.avgScore >= 50
-                      ? "warning.main"
-                      : "error.main"
-                }
-              >
-                {quiz.avgScore}%
-              </Typography>
-            </Stack>
-            <LinearProgress
-              variant="determinate"
-              value={quiz.avgScore}
-              sx={{
-                height: 5,
-                borderRadius: 3,
-                bgcolor: "rgba(0,0,0,0.07)",
-                "& .MuiLinearProgress-bar": {
-                  borderRadius: 3,
-                  bgcolor:
-                    quiz.avgScore >= 70
-                      ? "success.main"
-                      : quiz.avgScore >= 50
-                        ? "warning.main"
-                        : "error.main",
-                },
-              }}
-            />
-          </Box>
-        )}
       </CardContent>
 
       <CardActions sx={{ px: 2.5, pb: 2, pt: 0, gap: 1 }}>

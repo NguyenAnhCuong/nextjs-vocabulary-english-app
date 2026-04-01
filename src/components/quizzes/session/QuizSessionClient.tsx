@@ -1,7 +1,7 @@
 "use client";
 // src/components/quiz/session/QuizSessionClient.tsx
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Box,
   Stack,
@@ -9,7 +9,6 @@ import {
   IconButton,
   LinearProgress,
   Button,
-  Chip,
   Dialog,
   DialogContent,
   DialogActions,
@@ -21,7 +20,7 @@ import SectionHeader from "./SectionHeader";
 import PronunciationQuestionCard from "./PronunciationQuestionCard";
 import VocabularyQuestionCard from "./VocabularyQuestionCard";
 import ReadingSection from "./ReadingSection";
-import type { QuizDetail, AnswerMap } from "@/types/quiz";
+import type { QuizDetail, AnswerMap, QuizScore } from "@/types/quiz";
 import { computeScore } from "@/lib/quizUtils";
 import QuizResultView from "../result/QuizResultView";
 import QuizTimer from "../list/QuizTimer";
@@ -30,15 +29,41 @@ interface QuizSessionClientProps {
   quiz: QuizDetail;
 }
 
+async function submitToApi(
+  quizId: string,
+  answers: AnswerMap,
+  timeTakenSeconds: number,
+): Promise<QuizScore | null> {
+  try {
+    const res = await fetch(`/api/proxy/quizzes/${quizId}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quizId, answers, timeTakenSeconds }),
+    });
+    const json = await res.json();
+    return (json?.data?.score as QuizScore) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
   const router = useRouter();
   const startTimeRef = useRef(Date.now());
+  const answersRef = useRef<AnswerMap>({});
+  const submittedRef = useRef(false);
 
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [score, setScore] = useState<QuizScore | null>(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [timerPaused, setTimerPaused] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
+
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   const totalQ =
     quiz.pronunciationQuestions.length +
@@ -48,18 +73,59 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
   const answeredCount = Object.keys(answers).length;
   const progressPct = Math.round((answeredCount / totalQ) * 100);
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const doSubmit = useCallback(
+    async (currentAnswers?: AnswerMap) => {
+      if (submittedRef.current) return;
+      submittedRef.current = true;
+      setTimerPaused(true);
+      setSubmitting(true);
+
+      const finalAnswers = currentAnswers ?? answersRef.current;
+      const timeTaken = Math.round((Date.now() - startTimeRef.current) / 1000);
+
+      const apiScore = await submitToApi(quiz.id, finalAnswers, timeTaken);
+      const finalScore =
+        apiScore ?? computeScore(quiz, finalAnswers, timeTaken);
+
+      setScore(finalScore);
+      setSubmitting(false);
+      setSubmitted(true);
+    },
+    [quiz],
+  );
+
+  // ── Navigation guard ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (submitted) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      setShowExitDialog(true);
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [submitted]);
+
   const handleAnswer = useCallback((qId: string, val: string) => {
-    setAnswers((prev) => ({ ...prev, [qId]: val }));
+    setAnswers((prev) => {
+      const next = { ...prev, [qId]: val };
+      answersRef.current = next;
+      return next;
+    });
   }, []);
-
-  const doSubmit = useCallback(() => {
-    setTimerPaused(true);
-    setSubmitted(true);
-  }, []);
-
-  const handleExit = () => {
-    setShowExitDialog(true);
-  };
 
   const confirmExitAndSubmit = () => {
     setShowExitDialog(false);
@@ -67,12 +133,12 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
   };
 
   const confirmExitWithoutSubmit = () => {
+    submittedRef.current = true;
     router.push("/quizzes");
   };
 
-  if (submitted) {
-    const timeTaken = Math.round((Date.now() - startTimeRef.current) / 1000);
-    const score = computeScore(quiz, answers, timeTaken);
+  // ── Result screen ──────────────────────────────────────────────────────────
+  if (submitted && score) {
     return (
       <QuizResultView
         quiz={quiz}
@@ -82,7 +148,9 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
         onToggleAnswers={() => setShowAnswers((v) => !v)}
         onBack={() => router.push("/quizzes")}
         onRestart={() => {
+          submittedRef.current = false;
           setAnswers({});
+          setScore(null);
           setSubmitted(false);
           setShowAnswers(false);
           setTimerPaused(false);
@@ -125,7 +193,7 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
             <Tooltip title="Thoát bài làm">
               <IconButton
                 size="small"
-                onClick={handleExit}
+                onClick={() => setShowExitDialog(true)}
                 sx={{
                   border: "1px solid",
                   borderColor: "divider",
@@ -151,15 +219,12 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
               </Typography>
             </Box>
           </Stack>
-
           <QuizTimer
             totalSeconds={quiz.durationMinutes * 60}
-            onExpire={doSubmit}
+            onExpire={() => doSubmit()}
             paused={timerPaused}
           />
         </Stack>
-
-        {/* Answer progress */}
         <LinearProgress
           variant="determinate"
           value={progressPct}
@@ -186,7 +251,6 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
           py: 3,
         }}
       >
-        {/* Section 1 — Pronunciation */}
         <SectionHeader
           icon="🔊"
           title="Phần 1: Phát âm"
@@ -204,7 +268,6 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
           />
         ))}
 
-        {/* Section 2 — Vocabulary */}
         <Box mt={4}>
           <SectionHeader
             icon="📖"
@@ -224,7 +287,6 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
           ))}
         </Box>
 
-        {/* Section 3 — Reading */}
         <Box mt={4}>
           <SectionHeader
             icon="📰"
@@ -272,7 +334,8 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
           <Button
             variant="contained"
             size="large"
-            onClick={doSubmit}
+            onClick={() => doSubmit()}
+            disabled={submitting}
             disableElevation
             sx={{
               px: 6,
@@ -282,12 +345,12 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
               fontSize: 16,
             }}
           >
-            📤 Nộp bài
+            {submitting ? "Đang chấm điểm…" : "📤 Nộp bài"}
           </Button>
         </Box>
       </Box>
 
-      {/* Exit confirm dialog */}
+      {/* Exit dialog */}
       <Dialog
         open={showExitDialog}
         onClose={() => setShowExitDialog(false)}
@@ -303,8 +366,8 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
             Bạn muốn thoát?
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Khi thoát và nộp bài, kết quả sẽ được tính ngay lập tức với các câu
-            đã trả lời.
+            Khi thoát và nộp bài, kết quả sẽ được tính ngay với các câu đã trả
+            lời.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ flexDirection: "column", gap: 1, px: 3, pb: 3 }}>
@@ -314,9 +377,10 @@ export default function QuizSessionClient({ quiz }: QuizSessionClientProps) {
             fullWidth
             disableElevation
             onClick={confirmExitAndSubmit}
+            disabled={submitting}
             sx={{ borderRadius: 2, fontWeight: 700 }}
           >
-            Nộp bài và thoát
+            {submitting ? "Đang chấm điểm…" : "Nộp bài và thoát"}
           </Button>
           <Button
             variant="outlined"
