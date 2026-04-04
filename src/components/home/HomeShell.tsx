@@ -24,6 +24,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import styles from "./HomeShell.module.css";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useAppTheme } from "@/theme/ThemeContext";
 
 type NavKey =
   | "dashboard"
@@ -199,6 +200,7 @@ function IconLogout({ className }: { className?: string }) {
 
 export default function HomeShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
+  const { theme } = useAppTheme();
 
   const items: NavItem[] = useMemo(
     () => [
@@ -273,8 +275,8 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
     } satisfies Record<NavItem["group"], NavItem[]>;
   }, [items]);
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+  const themeS = useTheme();
+  const isMobile = useMediaQuery(themeS.breakpoints.down("md"), {
     noSsr: true,
   });
 
@@ -408,9 +410,9 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
             sx: {
               width: 280,
               borderRight: "none",
-              backgroundImage:
-                "linear-gradient(180deg, #020617 0%, #020617 35%, #0f172a 100%)",
+              backgroundImage: `linear-gradient(180deg, ${theme.dark} 0%, ${theme.dark} 35%, ${theme.dark}ee 100%)`,
               color: "common.white",
+              transition: "background-image 0.4s ease",
             },
           }}
         >
@@ -419,7 +421,14 @@ export default function HomeShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main content */}
-      <Box component="main" className={styles.content}>
+      <Box
+        component="main"
+        className={styles.content}
+        sx={{
+          backgroundColor: theme.bg,
+          transition: "background-color 0.4s ease",
+        }}
+      >
         <Box className={styles.header}>
           <Box className={styles.title}>
             <Typography variant="h5" fontWeight={700} letterSpacing="-0.04em">

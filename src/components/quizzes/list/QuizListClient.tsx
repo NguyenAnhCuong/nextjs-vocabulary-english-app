@@ -27,6 +27,7 @@ import Link from "next/link";
 import QuizCard from "./QuizCard";
 import type { QuizSummary } from "@/types/quiz";
 import QuizHistoryTab from "./QuizHistoryTab";
+import { useAppTheme } from "@/theme/ThemeContext";
 
 const PER_PAGE = 6;
 
@@ -46,6 +47,8 @@ export default function QuizListClient({
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState("");
   const [page, setPage] = useState(1);
+
+  const theme = useAppTheme();
 
   const filtered = useMemo(() => {
     return quizzes.filter((q) => {
@@ -81,14 +84,6 @@ export default function QuizListClient({
         spacing={2}
       >
         <Box>
-          <Typography
-            variant="h5"
-            fontWeight={800}
-            fontFamily="'Playfair Display', serif"
-            letterSpacing="-0.02em"
-          >
-            Câu đố từ vựng
-          </Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>
             {tab === 0
               ? `${filtered.length} bài kiểm tra · Chọn một bài để bắt đầu`
