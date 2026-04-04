@@ -23,11 +23,13 @@ const FILTERS = ["Tất cả từ", "Chưa học", "Đang học", "Đã thuộc"
 
 interface LevelTabProps {
   levelGroups: LevelGroup[];
+  search?: string;
   onSessionComplete?: () => void;
 }
 
 export default function LevelTab({
   levelGroups,
+  search = "",
   onSessionComplete,
 }: LevelTabProps) {
   const [filter, setFilter] = useState("Tất cả từ");
@@ -35,7 +37,12 @@ export default function LevelTab({
   // Tập hợp wordId đã yêu thích từ data server
   const router = useRouter();
 
-  if (!levelGroups.length) {
+  // Filter — so sánh với tên level (A1, B2…)
+  const filtered = levelGroups.filter((g) =>
+    g.level.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  if (!filtered.length) {
     return (
       <Box textAlign="center" py={8}>
         <Typography color="text.secondary">Chưa có dữ liệu cấp độ.</Typography>

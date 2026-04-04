@@ -1,3 +1,4 @@
+// src/components/vocabulary/subcomponents/OwnWordsTab.tsx
 "use client";
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ import {
   Stack,
   IconButton,
   Paper,
+  Pagination,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -19,9 +21,11 @@ import type { OwnWord } from "@/types/vocabulary";
 import EditWordModal from "./EditWordModal";
 
 const SORTS = ["Mới nhất", "A → Z", "Cần ôn nhiều nhất"];
+const PAGE_SIZE = 9;
 
 interface OwnWordsTabProps {
   words: OwnWord[];
+  search?: string; // ← thêm
   onAddWord: () => void;
   onDeleteWord: (id: string) => void;
   onUpdateWord: (id: string, dto: Partial<OwnWord>) => Promise<void>;
@@ -29,6 +33,7 @@ interface OwnWordsTabProps {
 
 export default function OwnWordsTab({
   words,
+  search = "",
   onAddWord,
   onDeleteWord,
   onUpdateWord,
@@ -36,11 +41,32 @@ export default function OwnWordsTab({
   const [sort, setSort] = useState("Mới nhất");
   const [editingWord, setEditingWord] = useState<OwnWord | null>(null);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const sorted = [...words].sort((a, b) => {
+  const q = search.trim().toLowerCase();
+
+  // 1. Filter theo search
+  const filteredWords = words.filter(
+    (w) =>
+      q === "" ||
+      w.en.toLowerCase().includes(q) ||
+      w.meaning.toLowerCase().includes(q),
+  );
+
+  // 2. Sort
+  const sorted = [...filteredWords].sort((a, b) => {
     if (sort === "A → Z") return a.en.localeCompare(b.en);
     return 0;
   });
+
+  // 3. Paginate
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const paginated = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleSort = (s: string) => {
+    setSort(s);
+    setPage(1);
+  };
 
   const handleSaveEdit = async (id: string, dto: Partial<OwnWord>) => {
     setSaving(true);
@@ -75,7 +101,7 @@ export default function OwnWordsTab({
             key={s}
             label={s}
             size="small"
-            onClick={() => setSort(s)}
+            onClick={() => handleSort(s)}
             variant={sort === s ? "filled" : "outlined"}
             color={sort === s ? "primary" : "default"}
             sx={{
@@ -86,196 +112,234 @@ export default function OwnWordsTab({
           />
         ))}
         <Box flex={1} />
+        {/* Hiển thị số từ khớp nếu đang search, ngược lại hiện tổng */}
         <Typography variant="body2" color="text.secondary">
-          {words.length} từ
+          {q !== ""
+            ? `${filteredWords.length} / ${words.length} từ`
+            : `${words.length} từ`}
         </Typography>
       </Stack>
 
-      <Grid container spacing={1.75}>
-        {sorted.map((word, i) => (
-          <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={word.id}>
-            <Card
-              sx={{
-                height: "100%",
-                border: "1.5px dashed rgba(108,143,255,0.35)",
-                animation: `fadeUp 0.35s ease ${i * 60}ms both`,
-                "@keyframes fadeUp": {
-                  from: { opacity: 0, transform: "translateY(10px)" },
-                  to: { opacity: 1, transform: "translateY(0)" },
-                },
-                "&:hover": {
-                  borderStyle: "solid",
-                  borderColor: "primary.main",
-                  boxShadow: "0 0 0 3px rgba(108,143,255,0.08)",
-                },
-                transition: "all 0.15s",
-                boxShadow: "none",
-              }}
-            >
-              <CardContent sx={{ p: 2.5, position: "relative" }}>
-                <Chip
-                  label="Từ của tôi"
-                  size="small"
+      {sorted.length === 0 ? (
+        <Box textAlign="center" py={8}>
+          <Typography fontSize={40}>✏️</Typography>
+          <Typography color="text.secondary" mt={1}>
+            {words.length === 0
+              ? "Chưa có từ nào. Hãy thêm từ đầu tiên của bạn!"
+              : `Không tìm thấy từ nào khớp với "${search}".`}
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <Grid container spacing={1.75}>
+            {paginated.map((word, i) => (
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={word.id}>
+                <Card
                   sx={{
-                    position: "absolute",
-                    top: 12,
-                    right: 12,
-                    bgcolor: "rgba(108,143,255,0.1)",
-                    color: "primary.main",
-                    fontWeight: 600,
-                    fontSize: "10px",
-                    height: 20,
-                  }}
-                />
-                <Typography
-                  fontFamily="'Playfair Display', serif"
-                  fontSize={20}
-                  fontWeight={500}
-                  mb={0.5}
-                  pr={7}
-                  lineHeight={1.2}
-                >
-                  {word.en}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  mb={1.25}
-                >
-                  {word.phonetic} · {word.type}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.primary"
-                  lineHeight={1.6}
-                  mb={1}
-                >
-                  {word.meaning}
-                </Typography>
-                {word.note && (
-                  <Box
-                    sx={{
-                      bgcolor: "rgba(108,143,255,0.07)",
-                      borderLeft: "3px solid",
+                    height: "100%",
+                    border: "1.5px dashed rgba(108,143,255,0.35)",
+                    animation: `fadeUp 0.35s ease ${i * 60}ms both`,
+                    "@keyframes fadeUp": {
+                      from: { opacity: 0, transform: "translateY(10px)" },
+                      to: { opacity: 1, transform: "translateY(0)" },
+                    },
+                    "&:hover": {
+                      borderStyle: "solid",
                       borderColor: "primary.main",
-                      borderRadius: "0 6px 6px 0",
-                      px: 1.25,
-                      py: 0.75,
-                      mt: 1,
-                    }}
-                  >
+                      boxShadow: "0 0 0 3px rgba(108,143,255,0.08)",
+                    },
+                    transition: "all 0.15s",
+                    boxShadow: "none",
+                  }}
+                >
+                  <CardContent sx={{ p: 2.5, position: "relative" }}>
+                    <Chip
+                      label="Từ của tôi"
+                      size="small"
+                      sx={{
+                        position: "absolute",
+                        top: 12,
+                        right: 12,
+                        bgcolor: "rgba(108,143,255,0.1)",
+                        color: "primary.main",
+                        fontWeight: 600,
+                        fontSize: "10px",
+                        height: 20,
+                      }}
+                    />
+                    <Typography
+                      fontFamily="'Playfair Display', serif"
+                      fontSize={20}
+                      fontWeight={500}
+                      mb={0.5}
+                      pr={7}
+                      lineHeight={1.2}
+                    >
+                      {word.en}
+                    </Typography>
                     <Typography
                       variant="caption"
-                      color="primary.main"
-                      lineHeight={1.6}
+                      color="text.secondary"
+                      display="block"
+                      mb={1.25}
                     >
-                      💡 {word.note}
+                      {word.phonetic} · {word.type}
                     </Typography>
-                  </Box>
-                )}
-                {word.status && (
-                  <Chip
-                    label={word.status}
-                    size="small"
-                    sx={{
-                      mt: 1,
-                      height: 18,
-                      fontSize: "10px",
-                      bgcolor:
-                        word.status === "MASTERED"
-                          ? "#e8f5e9"
-                          : word.status === "LEARNING"
-                            ? "#fff8e1"
-                            : "rgba(0,0,0,0.06)",
-                      color:
-                        word.status === "MASTERED"
-                          ? "#2e7d32"
-                          : word.status === "LEARNING"
-                            ? "#f57f17"
-                            : "text.secondary",
-                    }}
-                  />
-                )}
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mt={1.5}
-                >
-                  <Typography variant="caption" color="text.disabled">
-                    Thêm vào: {word.addedDate}
-                  </Typography>
-                  <Stack direction="row" spacing={0.5}>
-                    <IconButton
-                      size="small"
-                      sx={{
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: 1,
-                        p: 0.5,
-                      }}
-                      onClick={() => setEditingWord(word)}
+                    <Typography
+                      variant="body2"
+                      color="text.primary"
+                      lineHeight={1.6}
+                      mb={1}
                     >
-                      <EditIcon
-                        sx={{ fontSize: 14, color: "text.secondary" }}
+                      {word.meaning}
+                    </Typography>
+                    {word.note && (
+                      <Box
+                        sx={{
+                          bgcolor: "rgba(108,143,255,0.07)",
+                          borderLeft: "3px solid",
+                          borderColor: "primary.main",
+                          borderRadius: "0 6px 6px 0",
+                          px: 1.25,
+                          py: 0.75,
+                          mt: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="primary.main"
+                          lineHeight={1.6}
+                        >
+                          💡 {word.note}
+                        </Typography>
+                      </Box>
+                    )}
+                    {word.status && (
+                      <Chip
+                        label={word.status}
+                        size="small"
+                        sx={{
+                          mt: 1,
+                          height: 18,
+                          fontSize: "10px",
+                          bgcolor:
+                            word.status === "MASTERED"
+                              ? "#e8f5e9"
+                              : word.status === "LEARNING"
+                                ? "#fff8e1"
+                                : "rgba(0,0,0,0.06)",
+                          color:
+                            word.status === "MASTERED"
+                              ? "#2e7d32"
+                              : word.status === "LEARNING"
+                                ? "#f57f17"
+                                : "text.secondary",
+                        }}
                       />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => onDeleteWord(word.id)}
-                      sx={{
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: 1,
-                        p: 0.5,
-                      }}
+                    )}
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      mt={1.5}
                     >
-                      <DeleteOutlineIcon
-                        sx={{ fontSize: 14, color: "text.secondary" }}
-                      />
-                    </IconButton>
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+                      <Typography variant="caption" color="text.disabled">
+                        Thêm vào: {word.addedDate}
+                      </Typography>
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton
+                          size="small"
+                          sx={{
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1,
+                            p: 0.5,
+                          }}
+                          onClick={() => setEditingWord(word)}
+                        >
+                          <EditIcon
+                            sx={{ fontSize: 14, color: "text.secondary" }}
+                          />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => onDeleteWord(word.id)}
+                          sx={{
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 1,
+                            p: 0.5,
+                          }}
+                        >
+                          <DeleteOutlineIcon
+                            sx={{ fontSize: 14, color: "text.secondary" }}
+                          />
+                        </IconButton>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
 
-        {/* Add card */}
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
-          <Paper
-            variant="outlined"
-            onClick={onAddWord}
-            sx={{
-              height: "100%",
-              minHeight: 180,
-              border: "1.5px dashed rgba(108,143,255,0.3)",
-              borderRadius: 3,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              "&:hover": {
-                borderColor: "primary.main",
-                borderStyle: "solid",
-                bgcolor: "rgba(108,143,255,0.03)",
-              },
-            }}
-          >
-            <AddIcon sx={{ fontSize: 32, color: "text.disabled" }} />
-            <Typography fontWeight={500} color="text.secondary" fontSize="13px">
-              Thêm từ mới của bạn
-            </Typography>
-            <Typography variant="caption" color="text.disabled">
-              Ghi lại những từ bạn tự học được
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+            {/* Add card — chỉ hiện ở trang cuối và khi không đang search */}
+            {q === "" && (page === totalPages || totalPages === 0) && (
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+                <Paper
+                  variant="outlined"
+                  onClick={onAddWord}
+                  sx={{
+                    height: "100%",
+                    minHeight: 180,
+                    border: "1.5px dashed rgba(108,143,255,0.3)",
+                    borderRadius: 3,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      borderStyle: "solid",
+                      bgcolor: "rgba(108,143,255,0.03)",
+                    },
+                  }}
+                >
+                  <AddIcon sx={{ fontSize: 32, color: "text.disabled" }} />
+                  <Typography
+                    fontWeight={500}
+                    color="text.secondary"
+                    fontSize="13px"
+                  >
+                    Thêm từ mới của bạn
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled">
+                    Ghi lại những từ bạn tự học được
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
+          </Grid>
+
+          {totalPages > 1 && (
+            <Box display="flex" justifyContent="center" mt={4}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, v) => {
+                  setPage(v);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                color="primary"
+                shape="rounded"
+                size="small"
+              />
+            </Box>
+          )}
+        </>
+      )}
 
       <EditWordModal
         open={!!editingWord}

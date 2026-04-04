@@ -35,8 +35,6 @@ export default async function VocabPage() {
 
   const isAdmin = (session?.user as any)?.role === "ADMIN";
 
-  console.log(isAdmin);
-
   return (
     <Suspense fallback={<VocabSkeleton />}>
       <VocabularyPage data={data} isAdmin={isAdmin} />

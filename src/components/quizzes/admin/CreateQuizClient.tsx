@@ -1,7 +1,7 @@
 "use client";
 // src/components/quiz/admin/CreateQuizClient.tsx
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
   Box,
   Typography,
@@ -165,6 +165,7 @@ function StepPronunciation({
   questions: PronQ[];
   onChange: (q: PronQ[]) => void;
 }) {
+  const id = useId();
   const update = (i: number, patch: Partial<PronQ>) => {
     const n = [...questions];
     n[i] = { ...n[i], ...patch };
@@ -210,6 +211,7 @@ function StepPronunciation({
             🔊 Câu phát âm {qi + 1}
           </Typography>
           <TextField
+            id={id}
             size="small"
             fullWidth
             label="Câu hỏi"
@@ -236,6 +238,7 @@ function StepPronunciation({
                   onClick={() => update(qi, { answer: q.options[oi] })}
                 />
                 <TextField
+                  id={id}
                   size="small"
                   value={q.options[oi]}
                   onChange={(e) => updateOpt(qi, oi, e.target.value)}
@@ -243,6 +246,7 @@ function StepPronunciation({
                   sx={{ flex: 1 }}
                 />
                 <TextField
+                  id={id}
                   size="small"
                   value={q.phonetics[oi]}
                   onChange={(e) => updatePh(qi, oi, e.target.value)}
@@ -253,6 +257,7 @@ function StepPronunciation({
             ))}
           </Stack>
           <TextField
+            id={id}
             size="small"
             fullWidth
             label="Giải thích"
@@ -275,6 +280,7 @@ function StepVocabulary({
   questions: VocabQ[];
   onChange: (q: VocabQ[]) => void;
 }) {
+  const id = useId();
   const update = (i: number, patch: Partial<VocabQ>) => {
     const n = [...questions];
     n[i] = { ...n[i], ...patch };
@@ -340,6 +346,7 @@ function StepVocabulary({
             </IconButton>
           </Stack>
           <TextField
+            id={id}
             size="small"
             fullWidth
             label="Câu hỏi *"
@@ -368,6 +375,7 @@ function StepVocabulary({
                   onClick={() => update(qi, { answer: q.options[oi] })}
                 />
                 <TextField
+                  id={id}
                   size="small"
                   value={q.options[oi]}
                   onChange={(e) => updateOpt(qi, oi, e.target.value)}
@@ -386,6 +394,7 @@ function StepVocabulary({
             ))}
           </Stack>
           <TextField
+            id={id}
             size="small"
             fullWidth
             label="Giải thích"
@@ -407,6 +416,7 @@ function StepReading({
   question: ReadingQ;
   onChange: (r: ReadingQ) => void;
 }) {
+  const id = useId();
   const updateBlankOpt = (bi: number, oi: number, v: string) => {
     const blanks = [...question.blanks];
     const o = [...blanks[bi].options] as any;
@@ -450,6 +460,7 @@ function StepReading({
         }}
       >
         <TextField
+          id={id}
           size="small"
           fullWidth
           label="Tiêu đề bài đọc *"
@@ -460,6 +471,7 @@ function StepReading({
           InputLabelProps={{ shrink: true }}
         />
         <TextField
+          id={id}
           fullWidth
           label="Đoạn văn *"
           multiline
@@ -538,6 +550,7 @@ function StepReading({
                   onClick={() => updateBlank(bi, { answer: blank.options[oi] })}
                 />
                 <TextField
+                  id={id}
                   size="small"
                   value={blank.options[oi]}
                   onChange={(e) => updateBlankOpt(bi, oi, e.target.value)}
@@ -744,7 +757,7 @@ export default function CreateQuizClient() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
-      isPublished: false,
+      isPublished: true,
       pronunciationQuestions: pronQs.map((q, i) => ({
         order: i + 1,
         question: q.question,
@@ -794,6 +807,8 @@ export default function CreateQuizClient() {
       setSaving(false);
     }
   };
+
+  const id = useId();
 
   const canNext =
     step === 0
@@ -864,6 +879,7 @@ export default function CreateQuizClient() {
           >
             <Stack spacing={2.5}>
               <TextField
+                id={id}
                 label="Tên Quiz *"
                 fullWidth
                 size="small"
@@ -873,6 +889,7 @@ export default function CreateQuizClient() {
                 InputLabelProps={{ shrink: true }}
               />
               <TextField
+                id={id}
                 label="Mô tả *"
                 fullWidth
                 size="small"
@@ -899,6 +916,7 @@ export default function CreateQuizClient() {
                   </Select>
                 </FormControl>
                 <TextField
+                  id={id}
                   label="Thời gian (phút)"
                   type="number"
                   size="small"
@@ -910,6 +928,7 @@ export default function CreateQuizClient() {
                 />
               </Stack>
               <TextField
+                id={id}
                 label="Tags (phân cách dấu phẩy)"
                 fullWidth
                 size="small"

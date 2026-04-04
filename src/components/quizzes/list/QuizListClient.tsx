@@ -1,7 +1,7 @@
 "use client";
 // src/components/quiz/list/QuizListClient.tsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import {
   Box,
   Grid,
@@ -41,6 +41,7 @@ export default function QuizListClient({
   isAdmin,
   isLoggedIn,
 }: QuizListClientProps) {
+  const id = useId();
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState("");
@@ -182,6 +183,7 @@ export default function QuizListClient({
         <>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} mb={3}>
             <TextField
+              id={id}
               size="small"
               placeholder="Tìm kiếm quiz, tags…"
               value={search}

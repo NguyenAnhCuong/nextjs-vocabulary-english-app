@@ -1,3 +1,4 @@
+// src/components/vocabulary/Vocabulary.tsx
 "use client";
 
 import { useState, useCallback } from "react";
@@ -26,13 +27,18 @@ import AdminPanel from "../admin/AdminPanel";
 interface TabItem {
   label: string;
   icon: string;
+  searchPlaceholder: string;
 }
 
 const TABS: TabItem[] = [
-  { label: "Theo Chủ Đề", icon: "📂" },
-  { label: "Theo Cấp Độ", icon: "📊" },
-  { label: "Yêu Thích", icon: "⭐" },
-  { label: "Từ Của Tôi", icon: "✏️" },
+  { label: "Theo Chủ Đề", icon: "📂", searchPlaceholder: "Tìm chủ đề…" },
+  {
+    label: "Theo Cấp Độ",
+    icon: "📊",
+    searchPlaceholder: "Tìm cấp độ (A1, B2…)",
+  },
+  { label: "Yêu Thích", icon: "⭐", searchPlaceholder: "Tìm từ yêu thích…" },
+  { label: "Từ Của Tôi", icon: "✏️", searchPlaceholder: "Tìm từ của tôi…" },
 ];
 
 interface VocabularyPageProps {
@@ -46,37 +52,33 @@ export default function VocabularyPage({
 }: VocabularyPageProps) {
   const [activeTab, setActiveTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
-  // progressStats là state để cập nhật sau khi addWord thành công
+  // Mỗi tab có search riêng, không share nhau
+  const [searches, setSearches] = useState(["", "", "", ""]);
+
+  const search = searches[activeTab];
+  const setSearch = (val: string) =>
+    setSearches((prev) => prev.map((s, i) => (i === activeTab ? val : s)));
+
   const [progressStats, setProgressStats] = useState<WordProgressStats | null>(
     data.progressStats,
   );
-
-  // topics + levelGroups là state để cập nhật sau khi hoàn thành 1 session học
   const [topics, setTopics] = useState<Topic[]>(data.topics);
   const [levelGroups, setLevelGroups] = useState<LevelGroup[]>(
     data.levelGroups,
   );
 
-  // Fetch lại stats — gọi ngay sau khi backend tạo xong UserWord + WordProgress
   const refreshStats = useCallback(async () => {
     try {
       const res = await fetch(
         `/api/proxy/word-progress/stats?_t=${Date.now()}`,
-        {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" },
-        },
+        { cache: "no-store", headers: { "Cache-Control": "no-cache" } },
       );
       const json = await res.json();
       if (json?.data) setProgressStats(json.data);
-    } catch {
-      // Stats lỗi không block UI
-    }
+    } catch {}
   }, []);
 
-  // Refresh progress của topics + levels sau khi hoàn thành session học
   const refreshProgress = useCallback(async () => {
     try {
       const t = Date.now();
@@ -97,7 +99,6 @@ export default function VocabularyPage({
           }),
         ]);
 
-      // Update topics với progress mới
       if (
         topicsRes.status === "fulfilled" &&
         topicProgRes.status === "fulfilled"
@@ -120,7 +121,6 @@ export default function VocabularyPage({
         if (newTopics.length > 0) setTopics(newTopics);
       }
 
-      // Update levelGroups với learnedWords mới
       if (levelProgRes.status === "fulfilled") {
         const levelJson = await levelProgRes.value.json();
         const levelMap: Record<string, { learnedWords: number }> =
@@ -133,26 +133,21 @@ export default function VocabularyPage({
         );
       }
 
-      // Update stats
       if (statsRes.status === "fulfilled") {
         const statsJson = await statsRes.value.json();
         if (statsJson?.data) setProgressStats(statsJson.data);
       }
-    } catch {
-      // Silent fail
-    }
+    } catch {}
   }, []);
 
-  // Own words có thể mutate client-side
   const {
     words: ownWords,
     addWord,
     deleteWord,
     updateWord,
     saving,
-  } = useOwnWords(data.ownWords, refreshStats, refreshStats); // ← refreshStats chạy sau add/delete thành công
+  } = useOwnWords(data.ownWords, refreshStats, refreshStats);
 
-  // Count cho từng tab — "Từ Của Tôi" đọc từ live state để cập nhật sau khi thêm/xoá
   const getTabCount = (index: number) => {
     if (index === 0) return topics.length;
     if (index === 1) return 6;
@@ -164,6 +159,11 @@ export default function VocabularyPage({
   const handleSaveWord = async (dto: Parameters<typeof addWord>[0]) => {
     await addWord(dto);
     setModalOpen(false);
+  };
+
+  // Khi đổi tab: giữ nguyên search riêng của tab đó, không reset
+  const handleTabChange = (_: React.SyntheticEvent, v: number) => {
+    setActiveTab(v);
   };
 
   return (
@@ -200,7 +200,8 @@ export default function VocabularyPage({
           <TextField
             id="search-input"
             size="small"
-            placeholder="Tìm từ vựng…"
+            // Placeholder thay đổi theo tab đang active
+            placeholder={TABS[activeTab].searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             InputProps={{
@@ -211,7 +212,7 @@ export default function VocabularyPage({
               ),
             }}
             sx={{
-              width: { xs: "100%", sm: 220 },
+              width: { xs: "100%", sm: 240 },
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
                 fontSize: "13px",
@@ -233,18 +234,9 @@ export default function VocabularyPage({
           >
             Thêm từ của bạn
           </Button>
-          {isAdmin && isAdmin === true && (
-            <>
-              <AdminPanel />
-            </>
-          )}
+          {isAdmin && <AdminPanel />}
         </Stack>
       </Box>
-
-      {/* ── Progress stats bar ───────────────────────────────── */}
-      {/* {progressStats && progressStats.total > 0 && (
-        <ProgressStatsBar stats={progressStats} />
-      )} */}
 
       {/* ── Tab bar ──────────────────────────────────────────── */}
       <Box
@@ -258,7 +250,7 @@ export default function VocabularyPage({
       >
         <Tabs
           value={activeTab}
-          onChange={(_, v) => setActiveTab(v)}
+          onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
           TabIndicatorProps={{ style: { backgroundColor: "#6c8fff" } }}
@@ -300,21 +292,28 @@ export default function VocabularyPage({
       <Box sx={{ flex: 1, overflow: "auto", px: { xs: 2, md: 3 }, py: 2.5 }}>
         {activeTab === 0 && (
           <TopicTab
-            topics={data.topics}
-            search={search}
+            topics={topics}
+            search={search} // ← tìm theo tên chủ đề
             onSessionComplete={refreshProgress}
           />
         )}
         {activeTab === 1 && (
           <LevelTab
-            levelGroups={data.levelGroups}
+            levelGroups={levelGroups}
+            search={search} // ← tìm theo level
             onSessionComplete={refreshProgress}
           />
         )}
-        {activeTab === 2 && <FavouriteTab initialFavs={data.favourites} />}
+        {activeTab === 2 && (
+          <FavouriteTab
+            initialFavs={data.favourites}
+            search={search} // ← tìm theo tên từ / nghĩa
+          />
+        )}
         {activeTab === 3 && (
           <OwnWordsTab
             words={ownWords}
+            search={search} // ← tìm theo tên từ / nghĩa
             onAddWord={() => setModalOpen(true)}
             onDeleteWord={deleteWord}
             onUpdateWord={updateWord}

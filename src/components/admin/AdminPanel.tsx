@@ -1,6 +1,14 @@
+// src/components/admin/AdminPanel.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useId } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useId,
+  useRef,
+  DragEvent,
+} from "react";
 import {
   Drawer,
   Box,
@@ -29,6 +37,8 @@ import {
   Tooltip,
   InputAdornment,
   Paper,
+  LinearProgress,
+  Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -36,7 +46,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SearchIcon from "@mui/icons-material/Search";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +72,23 @@ interface AdminWord {
   meaning: string;
   isActive: boolean;
   wordTopics?: { topic: { id: string; name: string } }[];
+}
+
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+interface ParsedRow {
+  en: string;
+  phonetic?: string;
+  type?: string;
+  level?: string;
+  meaning: string;
+  example?: string;
+  note?: string;
+  topicName?: string; // ← tên chủ đề từ Excel, sẽ map sang topicId khi import
 }
 
 const WORD_TYPES = [
@@ -108,6 +140,288 @@ const COLOR_OPTIONS = [
   "#37474f",
 ];
 
+// ── XLSX column mapping ───────────────────────────────────────────────────────
+// Các tên cột hợp lệ (case-insensitive, trim)
+// Kiểm tra COL_MAP có đủ key chưa — thêm các alias còn thiếu
+const COL_MAP: Record<string, keyof ParsedRow> = {
+  en: "en",
+  "từ tiếng anh": "en",
+  "tiếng anh": "en",
+  word: "en",
+  phonetic: "phonetic",
+  "phiên âm": "phonetic",
+  type: "type",
+  "loại từ": "type",
+  "loai tu": "type",
+  level: "level",
+  "cấp độ": "level",
+  "cap do": "level",
+  meaning: "meaning",
+  "nghĩa tiếng việt": "meaning",
+  nghia: "meaning",
+  nghĩa: "meaning",
+  example: "example",
+  "câu ví dụ": "example",
+  "cau vi du": "example",
+  note: "note",
+  "ghi chú": "note",
+  "ghi chu": "note",
+  // ← Đảm bảo tất cả các alias của topics đều có
+  topics: "topicName",
+  topic: "topicName",
+  "chủ đề": "topicName",
+  "chu de": "topicName",
+  chude: "topicName",
+};
+
+function parseExcel(
+  file: File,
+): Promise<{ rows: ParsedRow[]; fileName: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target!.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+
+        // Ưu tiên sheet tên "Words", fallback sheet đầu tiên
+        const sheetName = wb.SheetNames.includes("Words")
+          ? "Words"
+          : wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const raw: any[][] = XLSX.utils.sheet_to_json(ws, {
+          header: 1,
+          defval: "",
+        });
+
+        if (raw.length < 2) {
+          reject(
+            new Error(
+              "File không có dữ liệu (cần ít nhất 1 hàng dữ liệu sau header).",
+            ),
+          );
+          return;
+        }
+
+        // Map header
+        const headers = (raw[0] as string[]).map((h) =>
+          String(h).trim().toLowerCase(),
+        );
+        const colIndex: Partial<Record<keyof ParsedRow, number>> = {};
+        headers.forEach((h, i) => {
+          const mapped = COL_MAP[h];
+          if (mapped) colIndex[mapped] = i;
+        });
+
+        if (colIndex.en === undefined || colIndex.meaning === undefined) {
+          reject(
+            new Error(
+              `Không tìm thấy cột bắt buộc "en" và "meaning". Header hiện tại: ${raw[0].join(", ")}`,
+            ),
+          );
+          return;
+        }
+
+        const rows: ParsedRow[] = [];
+        for (let i = 1; i < raw.length; i++) {
+          const row = raw[i] as string[];
+          const en = String(row[colIndex.en!] ?? "").trim();
+          const meaning = String(row[colIndex.meaning!] ?? "").trim();
+          if (!en || !meaning) continue; // Bỏ qua hàng rỗng
+
+          rows.push({
+            en,
+            meaning,
+            phonetic:
+              colIndex.phonetic !== undefined
+                ? String(row[colIndex.phonetic] ?? "").trim() || undefined
+                : undefined,
+            type:
+              colIndex.type !== undefined
+                ? String(row[colIndex.type] ?? "")
+                    .trim()
+                    .toUpperCase() || undefined
+                : undefined,
+            level:
+              colIndex.level !== undefined
+                ? String(row[colIndex.level] ?? "")
+                    .trim()
+                    .toUpperCase() || undefined
+                : undefined,
+            example:
+              colIndex.example !== undefined
+                ? String(row[colIndex.example] ?? "").trim() || undefined
+                : undefined,
+            note:
+              colIndex.note !== undefined
+                ? String(row[colIndex.note] ?? "").trim() || undefined
+                : undefined,
+            topicName:
+              colIndex.topicName !== undefined
+                ? String(row[colIndex.topicName] ?? "").trim() || undefined
+                : undefined,
+          });
+        }
+
+        resolve({ rows, fileName: file.name });
+      } catch (err: any) {
+        reject(new Error("Không thể đọc file: " + err.message));
+      }
+    };
+    reader.onerror = () => reject(new Error("Lỗi đọc file."));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function downloadTemplate(topics: AdminTopic[]) {
+  // SheetJS không hỗ trợ Data Validation dropdown trực tiếp từ named range,
+  // nên ta dùng kỹ thuật: ghi danh sách topics vào sheet ẩn "_ref",
+  // rồi dùng formula1 trỏ vào đó.
+  // Thay vào đó, dùng cách đơn giản hơn: liệt kê tên topics thành chuỗi cho formula1.
+
+  const topicNames = topics.filter((t) => t.isActive).map((t) => t.name);
+  const levelList = LEVELS.join(",");
+  const typeList = WORD_TYPES.join(",");
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet "Words" ────────────────────────────────────────────────────────
+  const headers = [
+    "en",
+    "phonetic",
+    "type",
+    "level",
+    "meaning",
+    "example",
+    "note",
+    "topics",
+  ];
+  const samples = [
+    [
+      "apple",
+      "/ˈæp.əl/",
+      "NOUN",
+      "A1",
+      "quả táo",
+      "I eat an apple every day.",
+      "",
+      topicNames[0] ?? "",
+    ],
+    [
+      "beautiful",
+      "/ˈbjuː.tɪ.fəl/",
+      "ADJECTIVE",
+      "A2",
+      "đẹp, xinh đẹp",
+      "She has a beautiful smile.",
+      "",
+      "",
+    ],
+    [
+      "accomplish",
+      "/əˈkʌm.plɪʃ/",
+      "VERB",
+      "B2",
+      "hoàn thành, đạt được",
+      "We accomplished our goal.",
+      "Formal",
+      topicNames[1] ?? "",
+    ],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...samples]);
+
+  ws["!cols"] = [
+    { wch: 20 },
+    { wch: 18 },
+    { wch: 16 },
+    { wch: 10 },
+    { wch: 28 },
+    { wch: 38 },
+    { wch: 28 },
+    { wch: 30 },
+  ];
+
+  // Data Validation — SheetJS Pro hỗ trợ !dataValidations,
+  // SheetJS CE (open source) cũng hỗ trợ từ v0.20+
+  // Nếu không hoạt động với version cũ, dropdown vẫn hiển thị giá trị mẫu đúng
+  ws["!dataValidations"] = [
+    {
+      // Type dropdown
+      type: "list",
+      sqref: "C2:C10000",
+      formula1: `"${typeList}"`,
+      showDropDown: false,
+      showErrorMessage: true,
+      error: `Giá trị hợp lệ: ${typeList}`,
+      errorTitle: "Loại từ không hợp lệ",
+    },
+    {
+      // Level dropdown
+      type: "list",
+      sqref: "D2:D10000",
+      formula1: `"${levelList}"`,
+      showDropDown: false,
+      showErrorMessage: true,
+      error: `Giá trị hợp lệ: ${levelList}`,
+      errorTitle: "Cấp độ không hợp lệ",
+    },
+    ...(topicNames.length > 0
+      ? [
+          {
+            // Topics dropdown
+            type: "list" as const,
+            sqref: "H2:H10000",
+            formula1: `"${topicNames.join(",")}"`,
+            showDropDown: false,
+            showErrorMessage: false, // Cho phép nhập tự do nếu topic không có trong list
+          },
+        ]
+      : []),
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "Words");
+
+  // ── Sheet "_ref" ẩn — liệt kê topics để người dùng tham khảo ───────────
+  const refData = [
+    ["Danh sách chủ đề hiện có"],
+    ...topicNames.map((name) => [name]),
+  ];
+  const wsRef = XLSX.utils.aoa_to_sheet(refData);
+  wsRef["!cols"] = [{ wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsRef, "Danh sách chủ đề");
+
+  // ── Sheet "Hướng dẫn" ────────────────────────────────────────────────────
+  const guideData = [
+    ["Cột", "Mô tả"],
+    ["en *", "Từ tiếng Anh (bắt buộc). Không được trùng với từ đã có."],
+    ["phonetic", "Phiên âm IPA. Ví dụ: /ˈæp.əl/ (tuỳ chọn)"],
+    ["type *", `Chọn từ dropdown: ${typeList}`],
+    ["level *", `Chọn từ dropdown: ${levelList}`],
+    ["meaning *", "Nghĩa tiếng Việt (bắt buộc)"],
+    ["example", "Câu ví dụ tiếng Anh (tuỳ chọn)"],
+    ["note", "Ghi chú (tuỳ chọn)"],
+    [
+      "topics",
+      "Chọn 1 chủ đề từ dropdown. Xem sheet 'Danh sách chủ đề' để biết các chủ đề hiện có.",
+    ],
+    [],
+    [
+      "⚠️ Quan trọng",
+      "Chỉ nhập dữ liệu vào sheet 'Words'. Không đổi tên cột hàng 1.",
+    ],
+    [
+      "⚠️ Quan trọng",
+      "Cột 'topics' chỉ hỗ trợ 1 chủ đề mỗi từ khi import hàng loạt.",
+    ],
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guideData);
+  wsGuide["!cols"] = [{ wch: 22 }, { wch: 70 }];
+  XLSX.utils.book_append_sheet(wb, wsGuide, "Hướng dẫn");
+
+  XLSX.writeFile(wb, "word_import_template.xlsx");
+}
+
 async function adminFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -126,7 +440,6 @@ async function adminFetch<T>(
 
 export default function AdminPanel() {
   const [open, setOpen] = useState(false);
-
   return (
     <>
       <Tooltip title="Quản trị (Admin)">
@@ -149,7 +462,6 @@ export default function AdminPanel() {
           Admin
         </Button>
       </Tooltip>
-
       <AdminDrawer open={open} onClose={() => setOpen(false)} />
     </>
   );
@@ -165,7 +477,6 @@ function AdminDrawer({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState(0);
-
   return (
     <Drawer
       anchor="right"
@@ -179,7 +490,6 @@ function AdminDrawer({
         },
       }}
     >
-      {/* Header */}
       <Box
         sx={{
           px: 3,
@@ -200,7 +510,6 @@ function AdminDrawer({
         </IconButton>
       </Box>
 
-      {/* Tabs */}
       <Box sx={{ borderBottom: "1px solid", borderColor: "divider", px: 2 }}>
         <Tabs
           value={tab}
@@ -210,16 +519,659 @@ function AdminDrawer({
         >
           <Tab label="📂 Chủ đề" />
           <Tab label="📖 Từ vựng" />
+          <Tab label="⬆️ Import Excel" />
         </Tabs>
       </Box>
 
-      {/* Content */}
       <Box sx={{ flex: 1, overflow: "auto" }}>
         {tab === 0 && <TopicsManager />}
         {tab === 1 && <WordsManager />}
+        {tab === 2 && <ImportManager />}
       </Box>
     </Drawer>
   );
+}
+
+// ── Import Manager ────────────────────────────────────────────────────────────
+
+type ImportStep = "idle" | "preview" | "importing" | "done" | "error";
+
+function ImportManager() {
+  const router = useRouter();
+  const [step, setStep] = useState<ImportStep>("idle");
+  const [dragging, setDragging] = useState(false);
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [parseError, setParseError] = useState("");
+  const [result, setResult] = useState<{
+    created: number;
+    restored: number; // ← thêm
+    skipped: number;
+    errors: string[];
+  } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch topics để map tên → id khi import, và để download template động
+  const [topics, setTopics] = useState<AdminTopic[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+
+  useEffect(() => {
+    adminFetch<any>("/topics?current=1&pageSize=100")
+      .then((res) => setTopics(res.result ?? []))
+      .catch(() => {})
+      .finally(() => setTopicsLoading(false));
+  }, []);
+
+  // Map tên topic (case-insensitive, trim) → id
+  const topicNameToId = useCallback(
+    (name: string): string | undefined => {
+      if (!name) return undefined;
+      const normalized = name.trim().toLowerCase();
+      return topics.find((t) => t.name.trim().toLowerCase() === normalized)?.id;
+    },
+    [topics],
+  );
+
+  const handleFile = async (file: File) => {
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      setParseError("Chỉ chấp nhận file .xlsx hoặc .xls");
+      setStep("error");
+      return;
+    }
+    setParseError("");
+    try {
+      const { rows, fileName: fn } = await parseExcel(file);
+      if (rows.length === 0) {
+        setParseError(
+          "File không có hàng dữ liệu hợp lệ (cần có cột 'en' và 'meaning').",
+        );
+        setStep("error");
+        return;
+      }
+      setParsedRows(rows);
+      setFileName(fn);
+      setStep("preview");
+    } catch (err: any) {
+      setParseError(err.message);
+      setStep("error");
+    }
+  };
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    e.target.value = "";
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    setStep("importing");
+    try {
+      const words = parsedRows.map((row) => {
+        const topicId = row.topicName?.trim()
+          ? topicNameToId(row.topicName)
+          : undefined;
+
+        return {
+          en: row.en,
+          phonetic: row.phonetic || undefined,
+          type: (WORD_TYPES.includes(row.type ?? "")
+            ? row.type
+            : "NOUN") as string,
+          level: (LEVELS.includes(row.level ?? "")
+            ? row.level
+            : "B2") as string,
+          meaning: row.meaning,
+          example: row.example || undefined,
+          topicIds: topicId ? [topicId] : [],
+        };
+      });
+
+      const res = await adminFetch<{
+        created: number;
+        restored: number;
+        skipped: number;
+        errors: string[];
+      }>("/words/bulk", {
+        method: "POST",
+        body: JSON.stringify({ words }),
+      });
+      //@ts-ignore
+      setResult({ restored: 0, ...res }); // restored từ backend, fallback 0 nếu backend cũ chưa trả về
+      setStep("done");
+      router.refresh(); // ← thêm dòng này
+    } catch (err: any) {
+      setParseError(err.message);
+      setStep("error");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const reset = () => {
+    setStep("idle");
+    setParsedRows([]);
+    setFileName("");
+    setParseError("");
+    setResult(null);
+  };
+
+  // ── IDLE / ERROR ─────────────────────────────────────────────────────────
+  if (step === "idle" || step === "error") {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={3}
+        >
+          <Box>
+            <Typography fontWeight={700} fontSize="15px">
+              Import từ vựng hàng loạt
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Tải lên file Excel (.xlsx) để thêm nhiều từ cùng lúc vào hệ thống
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={
+              topicsLoading ? <CircularProgress size={14} /> : <DownloadIcon />
+            }
+            disabled={topicsLoading}
+            onClick={() => downloadTemplate(topics)}
+            sx={{
+              borderColor: "primary.main",
+              color: "primary.main",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Tải file mẫu
+          </Button>
+        </Stack>
+
+        {step === "error" && parseError && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={reset}>
+            {parseError}
+          </Alert>
+        )}
+
+        {/* Drop zone */}
+        <Box
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          sx={{
+            border: "2px dashed",
+            borderColor: dragging ? "warning.main" : "rgba(237,108,2,0.35)",
+            borderRadius: 3,
+            p: { xs: 4, sm: 6 },
+            textAlign: "center",
+            cursor: "pointer",
+            bgcolor: dragging ? "rgba(237,108,2,0.04)" : "rgba(237,108,2,0.01)",
+            transition: "all 0.18s",
+            "&:hover": {
+              borderColor: "warning.main",
+              bgcolor: "rgba(237,108,2,0.04)",
+            },
+          }}
+        >
+          <UploadFileIcon
+            sx={{
+              fontSize: 52,
+              color: dragging ? "warning.main" : "text.disabled",
+              mb: 1.5,
+            }}
+          />
+          <Typography
+            fontWeight={600}
+            fontSize="15px"
+            color={dragging ? "warning.main" : "text.primary"}
+          >
+            {dragging ? "Thả file vào đây…" : "Kéo thả file Excel vào đây"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            hoặc{" "}
+            <span style={{ color: "#ed6c02", fontWeight: 600 }}>
+              nhấn để chọn file
+            </span>
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.disabled"
+            display="block"
+            mt={1.5}
+          >
+            Chấp nhận: .xlsx, .xls · Tối đa 5 MB
+          </Typography>
+        </Box>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          style={{ display: "none" }}
+          onChange={onFileChange}
+        />
+
+        {/* Column guide */}
+        <Box mt={3}>
+          <Typography
+            variant="caption"
+            fontWeight={600}
+            color="text.secondary"
+            display="block"
+            mb={1}
+          >
+            Cột bắt buộc:
+          </Typography>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            flexWrap="wrap"
+            useFlexGap
+            mb={0.75}
+          >
+            {["en *", "meaning *", "type *", "level *"].map((col) => (
+              <Chip
+                key={col}
+                label={col}
+                size="small"
+                sx={{
+                  bgcolor: "rgba(237,108,2,0.1)",
+                  color: "warning.dark",
+                  fontWeight: 600,
+                  fontSize: "11px",
+                }}
+              />
+            ))}
+            {["phonetic", "example", "note", "topics"].map((col) => (
+              <Chip
+                key={col}
+                label={col}
+                size="small"
+                variant="outlined"
+                sx={{ borderColor: "divider", fontSize: "11px" }}
+              />
+            ))}
+          </Stack>
+          <Typography variant="caption" color="text.disabled" display="block">
+            Cột <strong>topics</strong>: nhập tên chủ đề (khớp chính xác với
+            danh sách chủ đề hiện có — xem sheet "Danh sách chủ đề" trong file
+            mẫu)
+          </Typography>
+          {!topicsLoading && topics.filter((t) => t.isActive).length > 0 && (
+            <Stack
+              direction="row"
+              spacing={0.5}
+              flexWrap="wrap"
+              useFlexGap
+              mt={0.75}
+            >
+              {topics
+                .filter((t) => t.isActive)
+                .map((t) => (
+                  <Chip
+                    key={t.id}
+                    label={`${t.emoji ?? ""} ${t.name}`}
+                    size="small"
+                    sx={{
+                      fontSize: "11px",
+                      bgcolor: `${t.color}18`,
+                      color: t.color ?? "text.secondary",
+                    }}
+                  />
+                ))}
+            </Stack>
+          )}
+        </Box>
+      </Box>
+    );
+  }
+
+  // ── PREVIEW ──────────────────────────────────────────────────────────────
+  if (step === "preview") {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={2}
+        >
+          <Box>
+            <Typography fontWeight={700} fontSize="15px">
+              Xem trước dữ liệu
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              📄 {fileName} · <strong>{parsedRows.length}</strong> từ hợp lệ
+            </Typography>
+          </Box>
+          <Button size="small" onClick={reset} sx={{ color: "text.secondary" }}>
+            Chọn lại
+          </Button>
+        </Stack>
+
+        <Box
+          sx={{
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 2,
+            overflow: "hidden",
+            mb: 2.5,
+          }}
+        >
+          <Table
+            size="small"
+            stickyHeader
+            sx={{ "& td, & th": { fontSize: "12px" } }}
+          >
+            <TableHead>
+              <TableRow>
+                {[
+                  "#",
+                  "Từ (en)",
+                  "Loại",
+                  "Cấp",
+                  "Nghĩa",
+                  "Chủ đề",
+                  "Ghi chú",
+                ].map((h) => (
+                  <TableCell
+                    key={h}
+                    sx={{
+                      fontWeight: 700,
+                      bgcolor: "background.default",
+                      py: 1,
+                    }}
+                  >
+                    {h}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {parsedRows.slice(0, 50).map((row, i) => {
+                const topicId = topicNameToId(row.topicName ?? "");
+                const topicObj = topics.find((t) => t.id === topicId);
+                const topicUnknown = row.topicName && !topicId;
+                return (
+                  <TableRow
+                    key={i}
+                    sx={{ "&:hover": { bgcolor: "background.default" } }}
+                  >
+                    <TableCell sx={{ color: "text.disabled" }}>
+                      {i + 1}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "primary.main" }}>
+                      {row.en}
+                    </TableCell>
+                    <TableCell>
+                      {row.type ? (
+                        <Chip
+                          label={row.type}
+                          size="small"
+                          sx={{ fontSize: "10px", height: 18 }}
+                        />
+                      ) : (
+                        <Chip
+                          label="NOUN*"
+                          size="small"
+                          color="warning"
+                          sx={{ fontSize: "10px", height: 18 }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.level ? (
+                        <Chip
+                          label={row.level}
+                          size="small"
+                          sx={{ fontSize: "10px", height: 18 }}
+                        />
+                      ) : (
+                        <Chip
+                          label="B2*"
+                          size="small"
+                          color="warning"
+                          sx={{ fontSize: "10px", height: 18 }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        maxWidth: 160,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {row.meaning}
+                    </TableCell>
+                    <TableCell>
+                      {topicObj ? (
+                        <Chip
+                          label={`${topicObj.emoji ?? ""} ${topicObj.name}`}
+                          size="small"
+                          sx={{
+                            fontSize: "10px",
+                            height: 18,
+                            bgcolor: `${topicObj.color}18`,
+                            color: topicObj.color ?? undefined,
+                          }}
+                        />
+                      ) : topicUnknown ? (
+                        <Tooltip
+                          title={`Không tìm thấy chủ đề "${row.topicName}" — sẽ bỏ qua`}
+                        >
+                          <Chip
+                            label={`⚠️ ${row.topicName}`}
+                            size="small"
+                            color="warning"
+                            sx={{ fontSize: "10px", height: 18 }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <span style={{ color: "#aaa" }}>—</span>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ color: "text.secondary" }}>
+                      {row.note || "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          {parsedRows.length > 50 && (
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                bgcolor: "background.default",
+                borderTop: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                ... và {parsedRows.length - 50} từ nữa
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Warnings summary */}
+        {parsedRows.some((r) => r.topicName && !topicNameToId(r.topicName)) && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Một số từ có tên chủ đề không khớp với danh sách hiện có — chủ đề
+            của những từ đó sẽ bị bỏ qua khi import.
+          </Alert>
+        )}
+
+        <Stack direction="row" spacing={1.5} justifyContent="flex-end">
+          <Button onClick={reset} sx={{ color: "text.secondary" }}>
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={handleImport}
+            sx={{
+              bgcolor: "warning.main",
+              "&:hover": { bgcolor: "warning.dark" },
+              px: 3,
+            }}
+          >
+            Import {parsedRows.length} từ
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
+
+  // ── IMPORTING ────────────────────────────────────────────────────────────
+  if (step === "importing") {
+    return (
+      <Box sx={{ p: 3, textAlign: "center", py: 8 }}>
+        <CircularProgress sx={{ color: "warning.main" }} size={48} />
+        <Typography fontWeight={600} mt={2.5}>
+          Đang import {parsedRows.length} từ…
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.5}>
+          Vui lòng không đóng cửa sổ này
+        </Typography>
+        <LinearProgress
+          sx={{
+            mt: 3,
+            borderRadius: 2,
+            "& .MuiLinearProgress-bar": { bgcolor: "warning.main" },
+          }}
+        />
+      </Box>
+    );
+  }
+
+  // ── DONE ─────────────────────────────────────────────────────────────────
+  if (step === "done" && result) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Stack alignItems="center" spacing={1.5} py={3}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 56, color: "#2e7d32" }} />
+          <Typography fontWeight={700} fontSize="17px">
+            Import hoàn tất!
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={2} justifyContent="center" mb={3}>
+          <Paper
+            variant="outlined"
+            sx={{
+              px: 3,
+              py: 2,
+              textAlign: "center",
+              borderRadius: 2,
+              minWidth: 110,
+            }}
+          >
+            <Typography fontSize={28} fontWeight={700} color="success.main">
+              {result.created}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Từ đã thêm
+            </Typography>
+          </Paper>
+
+          {/* ← Thêm card này */}
+          {result.restored > 0 && (
+            <Paper
+              variant="outlined"
+              sx={{
+                px: 3,
+                py: 2,
+                textAlign: "center",
+                borderRadius: 2,
+                minWidth: 110,
+              }}
+            >
+              <Typography fontSize={28} fontWeight={700} color="info.main">
+                {result.restored}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Đã khôi phục
+              </Typography>
+            </Paper>
+          )}
+
+          <Paper
+            variant="outlined"
+            sx={{
+              px: 3,
+              py: 2,
+              textAlign: "center",
+              borderRadius: 2,
+              minWidth: 110,
+            }}
+          >
+            <Typography fontSize={28} fontWeight={700} color="text.secondary">
+              {result.skipped}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Bỏ qua
+            </Typography>
+          </Paper>
+        </Stack>
+        {result.errors.length > 0 && (
+          <Alert severity="warning" sx={{ mb: 2.5 }}>
+            <Typography variant="body2" fontWeight={600} mb={0.5}>
+              {result.errors.length} dòng bị bỏ qua:
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2 }}>
+              {result.errors.slice(0, 10).map((e, i) => (
+                <li key={i}>
+                  <Typography variant="caption">{e}</Typography>
+                </li>
+              ))}
+              {result.errors.length > 10 && (
+                <li>
+                  <Typography variant="caption">
+                    ... và {result.errors.length - 10} dòng nữa
+                  </Typography>
+                </li>
+              )}
+            </Box>
+          </Alert>
+        )}
+        <Stack direction="row" justifyContent="center">
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={reset}
+            sx={{
+              bgcolor: "warning.main",
+              "&:hover": { bgcolor: "warning.dark" },
+              px: 4,
+            }}
+          >
+            Import tiếp
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
+
+  return null;
 }
 
 // ── Topics Manager ────────────────────────────────────────────────────────────
