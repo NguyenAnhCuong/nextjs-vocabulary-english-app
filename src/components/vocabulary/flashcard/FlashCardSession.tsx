@@ -1,17 +1,15 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Box,
   Stack,
   Typography,
   IconButton,
   LinearProgress,
-  Chip,
   Button,
   Tooltip,
   Fade,
-  CircularProgress,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";

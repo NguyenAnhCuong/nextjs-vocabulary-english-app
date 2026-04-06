@@ -33,7 +33,6 @@ for (const size of SIZES) {
     .resize(size, size)
     .png()
     .toFile(`${OUTPUT_DIR}/icon-${size}x${size}.png`);
-  console.log(`✅ icon-${size}x${size}.png`);
 }
 
 console.log("\n🎉 All icons generated in public/icons/");

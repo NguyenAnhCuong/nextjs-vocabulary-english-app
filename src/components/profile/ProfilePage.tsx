@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import {
   Box,
   Typography,
@@ -28,6 +28,7 @@ import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
 import { useAppTheme } from "@/theme/ThemeContext";
+import { redirect, useRouter } from "next/navigation";
 
 // ── Theme options ─────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ export default function ProfilePage() {
   const user = session?.user as any;
 
   const { themeKey, theme, setThemeKey } = useAppTheme();
+  const router = useRouter();
 
   // ── Name edit ────────────────────────────────────────────────────────────
   const [editingName, setEditingName] = useState(false);
@@ -176,6 +178,10 @@ export default function ProfilePage() {
 
   const handleSaveName = async () => {
     if (!nameValue.trim()) return;
+    if (!user?.id) {
+      setNameError("Không tìm thấy thông tin người dùng.");
+      return;
+    }
     setNameSaving(true);
     setNameError("");
     try {
@@ -184,6 +190,7 @@ export default function ProfilePage() {
         body: JSON.stringify({ name: nameValue.trim() }),
       });
       await updateSession({ name: nameValue.trim() });
+      router.refresh();
       setEditingName(false);
       showToast("Đã cập nhật tên thành công!");
     } catch (e: any) {
@@ -811,6 +818,23 @@ export default function ProfilePage() {
             </Typography>
           </Section>
         </Stack>
+        <Button
+          fullWidth
+          sx={{
+            mt: 4,
+            backgroundColor: "rgba(39, 29, 29, 0.1)",
+            "&:hover": { backgroundColor: "rgb(199, 101, 101)" },
+            borderRadius: 2,
+          }}
+          size="large"
+          color="error"
+          onClick={() => {
+            signOut();
+            redirect("/auth/signin");
+          }}
+        >
+          Đăng xuất
+        </Button>
       </Box>
 
       {/* Toast */}

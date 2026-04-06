@@ -1,13 +1,17 @@
 import HomeShell from "@/components/home/HomeShell";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../api/auth/auth.options";
+import { redirect } from "next/navigation";
 
-export default function UserLayout({
+export default async function UserLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <HomeShell>{children}</HomeShell>
-    </>
-  );
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/auth/signin");
+  }
+  return <HomeShell>{children}</HomeShell>;
 }

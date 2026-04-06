@@ -1,3 +1,4 @@
+// src/components/home/DashBoard.tsx
 "use client";
 
 import {
@@ -7,38 +8,115 @@ import {
   Paper,
   Button,
   LinearProgress,
-  CircularProgress,
   Stack,
+  Chip,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import { signIn, signOut, useSession } from "next-auth/react";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { useEffect } from "react";
+import { useAppTheme } from "@/theme/ThemeContext";
+import type { LevelGroup, WordProgressStats } from "@/types/vocabulary";
 
-// Mock data cho các trình độ
-const levelData = [
-  { id: "A1", label: "Beginner", progress: 500, total: 500, color: "#facc15" },
-  { id: "A2", label: "Elementary", progress: 23, total: 500, color: "#4ade80" },
-  {
-    id: "B1",
-    label: "Intermediate",
-    progress: 156,
-    total: 500,
-    color: "#60a5fa",
-  },
-  {
-    id: "B2",
-    label: "Upper-Intermediate",
-    progress: 23,
-    total: 500,
-    color: "#4b5563",
-  },
-  { id: "C1", label: "Advanced", progress: 0, total: 500, color: "#f87171" },
-  { id: "C2", label: "Proficiency", progress: 0, total: 500, color: "#a855f7" },
-];
+// ── Level color map ────────────────────────────────────────────────────────────
+const LEVEL_STYLE: Record<
+  string,
+  { color: string; bg: string; label: string }
+> = {
+  A1: { color: "#854d0e", bg: "#fef9c3", label: "Beginner" },
+  A2: { color: "#166534", bg: "#dcfce7", label: "Elementary" },
+  B1: { color: "#1e40af", bg: "#dbeafe", label: "Intermediate" },
+  B2: { color: "#4c1d95", bg: "#ede9fe", label: "Upper-Int." },
+  C1: { color: "#9f1239", bg: "#ffe4e6", label: "Advanced" },
+  C2: { color: "#1e3a5f", bg: "#e0f2fe", label: "Proficiency" },
+};
 
-export default function Dashboard() {
-  const { data: session } = useSession();
+// ── Stat card ──────────────────────────────────────────────────────────────────
+function StatCard({
+  icon,
+  value,
+  label,
+  accent,
+  sub,
+}: {
+  icon: React.ReactNode;
+  value: string | number;
+  label: string;
+  accent: string;
+  sub?: string;
+}) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2.5,
+        borderRadius: 3,
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        borderColor: "divider",
+        transition: "box-shadow 0.2s",
+        "&:hover": { boxShadow: `0 4px 20px ${accent}20` },
+      }}
+    >
+      <Box
+        sx={{
+          width: 48,
+          height: 48,
+          borderRadius: 2.5,
+          bgcolor: `${accent}15`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: accent,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box>
+        <Typography
+          sx={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: "1.75rem",
+            fontWeight: 700,
+            lineHeight: 1,
+            color: accent,
+          }}
+        >
+          {value}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" fontWeight={600}>
+          {label}
+        </Typography>
+        {sub && (
+          <Typography variant="caption" color="text.disabled" display="block">
+            {sub}
+          </Typography>
+        )}
+      </Box>
+    </Paper>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export default function DashBoardPage({
+  levelGroups,
+  session,
+  progressStats,
+  dashStats,
+}: {
+  levelGroups: LevelGroup[];
+  session: any;
+  progressStats: WordProgressStats | null;
+  dashStats: any;
+}) {
+  const { theme } = useAppTheme();
+  const { data: clientSession } = useSession();
 
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
@@ -46,235 +124,346 @@ export default function Dashboard() {
     }
   }, [session]);
 
+  const user = (clientSession?.user ?? session?.user) as any;
+  const loginDays = dashStats?.loginDays ?? dashStats?.data?.loginDays ?? 0;
+  const streak = dashStats?.streak ?? dashStats?.data?.streak ?? 0;
+  const totalWords = progressStats?.total ?? 0;
+  const mastered = progressStats?.MASTERED ?? 0;
+  const learning =
+    (progressStats?.LEARNING ?? 0) + (progressStats?.REVIEWING ?? 0);
+
+  const firstName = user?.name?.split(" ").at(-1) ?? "bạn";
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: { xs: 1, md: 3 } }}>
-      {/* SECTION 1: TOP CARDS */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {/* Daily Progress */}
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Paper
-            elevation={0}
+    <Box
+      sx={{
+        maxWidth: 900,
+        mx: "auto",
+        px: { xs: 0, md: 1 },
+        pb: 6,
+        bgcolor: theme.bg,
+        transition: "background-color 0.4s",
+      }}
+    >
+      {/* ── Greeting hero ──────────────────────────────────────────────── */}
+      <Box
+        sx={{
+          position: "relative",
+          borderRadius: 4,
+          overflow: "hidden",
+          mb: 3,
+          background: `linear-gradient(135deg, ${theme.dark} 0%, ${theme.accent}dd 100%)`,
+          p: { xs: 3, md: 4 },
+          color: "white",
+        }}
+      >
+        {/* Background gif overlay */}
+        <Box
+          component="img"
+          src="/assets/gif/banner-black-cat.gif"
+          sx={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            height: "100%",
+            opacity: 0.18,
+            pointerEvents: "none",
+          }}
+        />
+        {/* Decorative rings */}
+        {[140, 200, 260].map((size, i) => (
+          <Box
+            key={i}
             sx={{
-              p: 3,
-              height: "100%",
-              borderRadius: 5,
-              color: "white",
-              position: "relative",
-              overflow: "hidden",
-              minHeight: 200,
+              position: "absolute",
+              borderRadius: "50%",
+              border: "1px solid rgba(255,255,255,0.1)",
+              width: size,
+              height: size,
+              top: -size / 3,
+              right: -size / 3,
+            }}
+          />
+        ))}
 
-              backgroundImage: `url("/assets/gif/banner-black-cat.gif")`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              opacity: 0.75,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              fontWeight: 700,
             }}
           >
-            {/* Overlay để chữ dễ đọc */}
-            <Box
-              sx={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.55))",
-              }}
-            />
-
-            {/* Content */}
-            <Box
-              sx={{
-                position: "relative",
-                zIndex: 2,
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography
-                variant="subtitle2"
-                fontWeight={700}
-                sx={{ width: "100%", textAlign: "left" }}
-              >
-                ● Tiến Độ Học Tập
-              </Typography>
-
-              <Box textAlign="center" mb={5}>
-                <Typography variant="h4" fontWeight={800}>
-                  Ngày 1
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Repeat Words */}
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <Paper
-            elevation={0}
+            Chào mừng trở lại
+          </Typography>
+          <Typography
             sx={{
-              p: 3,
-              height: "100%",
-              borderRadius: 5,
-              bgcolor: "#fbbf24", // Amber
-              color: "white",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              position: "relative",
-              minHeight: 200,
+              fontFamily: "'Playfair Display', serif",
+              fontSize: { xs: "1.75rem", md: "2.25rem" },
+              fontWeight: 700,
+              lineHeight: 1.1,
+              mt: 0.5,
+              mb: 2,
             }}
           >
-            <Typography
-              variant="subtitle2"
-              fontWeight={700}
-              sx={{ width: "100%", textAlign: "left" }}
-            >
-              ★ Từ Cần Ôn Lại
-            </Typography>
+            {firstName} 👋
+          </Typography>
 
-            <Box sx={{ position: "relative", display: "inline-flex", mt: 2 }}>
-              {/* Background circle */}
-              <CircularProgress
-                variant="determinate"
-                value={100}
-                size={110}
-                thickness={5}
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+            {streak > 0 && (
+              <Chip
+                icon={
+                  <LocalFireDepartmentIcon
+                    sx={{ fontSize: 15, color: "#fb923c !important" }}
+                  />
+                }
+                label={`${streak} ngày liên tiếp`}
+                size="small"
                 sx={{
-                  color: "rgba(255,255,255,0.3)",
-                }}
-              />
-
-              {/* Progress */}
-              <CircularProgress
-                variant="determinate"
-                value={(13 / 118) * 100}
-                size={110}
-                thickness={5}
-                sx={{
+                  bgcolor: "rgba(255,255,255,0.15)",
                   color: "white",
-                  position: "absolute",
-                  left: 0,
+                  fontWeight: 600,
+                  fontSize: "12px",
                 }}
               />
-
-              {/* Center text */}
-              <Box
+            )}
+            {totalWords > 0 && (
+              <Chip
+                icon={
+                  <AutoStoriesIcon
+                    sx={{ fontSize: 14, color: "white !important" }}
+                  />
+                }
+                label={`${totalWords} từ đang học`}
+                size="small"
                 sx={{
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  position: "absolute",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  bgcolor: "rgba(255,255,255,0.15)",
+                  color: "white",
+                  fontWeight: 600,
+                  fontSize: "12px",
                 }}
-              >
-                <Typography variant="h6" fontWeight={800}>
-                  13/118
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
+              />
+            )}
+          </Stack>
+
+          <Button
+            component={Link}
+            href="/learning"
+            variant="contained"
+            startIcon={<PlayArrowIcon />}
+            disableElevation
+            sx={{
+              mt: 3,
+              bgcolor: "white",
+              color: theme.accent,
+              fontWeight: 700,
+              borderRadius: 2.5,
+              px: 3,
+              "&:hover": { bgcolor: "rgba(255,255,255,0.9)" },
+            }}
+          >
+            Học ngay
+          </Button>
+        </Box>
+      </Box>
+
+      {/* ── Stats row ──────────────────────────────────────────────────── */}
+      <Grid container spacing={1.75} mb={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard
+            icon={<LocalFireDepartmentIcon />}
+            value={streak}
+            label="Chuỗi ngày"
+            accent="#f97316"
+            sub={streak > 0 ? "Đang duy trì!" : "Bắt đầu hôm nay"}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard
+            icon={<AutoStoriesIcon />}
+            value={loginDays}
+            label="Ngày đã học"
+            accent={theme.accent}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard
+            icon={<TrendingUpIcon />}
+            value={totalWords}
+            label="Tổng số từ"
+            accent="#8b5cf6"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <StatCard
+            icon={<EmojiEventsIcon />}
+            value={mastered}
+            label="Từ đã thuộc"
+            accent="#16a34a"
+          />
         </Grid>
       </Grid>
 
-      {/* SECTION 2: MAIN ACTION BUTTON */}
-      <Button
-        fullWidth
-        variant="contained"
-        startIcon={<PlayArrowIcon />}
-        sx={{
-          py: 2,
-          mb: 4,
-          borderRadius: 4,
-          bgcolor: "#84cc16",
-          fontSize: "1.1rem",
-          fontWeight: 700,
-          textTransform: "none",
-          "&:hover": { bgcolor: "#65a30d" },
-        }}
-        onClick={() => signIn()}
-      >
-        Học Từ Vựng
-      </Button>
-
-      {/* SECTION 3: PROGRESS BY LEVELS */}
-      <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-        <AssessmentIcon fontSize="small" color="action" />
-        <Typography variant="h6" fontWeight={700} color="text.secondary">
-          Trình độ của bạn
+      {/* ── Level progress ─────────────────────────────────────────────── */}
+      <Box mb={2} display="flex" alignItems="center" gap={1}>
+        <TrendingUpIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+        <Typography
+          fontWeight={700}
+          color="text.secondary"
+          fontSize="14px"
+          textTransform="uppercase"
+          letterSpacing="0.06em"
+        >
+          Tiến độ theo cấp độ
         </Typography>
       </Box>
 
-      <Stack spacing={2}>
-        {levelData.map((level) => (
-          <Paper
-            key={level.id}
-            elevation={0}
-            sx={{
-              p: 1.5,
-              borderRadius: 4,
-              border: "1px solid",
-              borderColor: "divider",
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              overflow: "hidden",
-            }}
-          >
-            {/* Level Icon Square */}
-            <Box
+      <Stack spacing={1.5}>
+        {levelGroups.map((grp, i) => {
+          const style = LEVEL_STYLE[grp.level] ?? {
+            color: "#64748b",
+            bg: "#f1f5f9",
+            label: grp.level,
+          };
+          const pct =
+            grp.totalWords > 0
+              ? Math.round((grp.learnedWords / grp.totalWords) * 100)
+              : 0;
+
+          return (
+            <Paper
+              key={grp.level}
+              variant="outlined"
               sx={{
-                width: 60,
-                height: 60,
+                p: 2,
                 borderRadius: 3,
-                bgcolor: level.color,
+                borderColor: "divider",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                gap: 2,
+                opacity: grp.locked ? 0.5 : 1,
+                transition: "all 0.2s",
+                animation: `fadeUp 0.3s ease ${i * 50}ms both`,
+                "@keyframes fadeUp": {
+                  from: { opacity: 0, transform: "translateY(8px)" },
+                  to: { opacity: 1, transform: "translateY(0)" },
+                },
+                "&:hover": grp.locked
+                  ? {}
+                  : {
+                      borderColor: style.color,
+                      boxShadow: `0 2px 16px ${style.color}18`,
+                    },
               }}
             >
-              <Typography variant="h5" fontWeight={800} color="white">
-                {level.id}
-              </Typography>
-            </Box>
-
-            {/* Level Info */}
-            <Box sx={{ flexGrow: 1 }}>
+              {/* Level badge */}
               <Box
                 sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 2.5,
+                  bgcolor: style.bg,
                   display: "flex",
-                  justifyContent: "space-between",
-                  mb: 0.5,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
-                <Typography fontWeight={700}>{level.label}</Typography>
                 <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  fontWeight={600}
+                  fontWeight={800}
+                  fontSize="15px"
+                  color={style.color}
                 >
-                  {level.progress}/{level.total}
+                  {grp.level}
                 </Typography>
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={(level.progress / level.total) * 100}
-                sx={{
-                  height: 8,
-                  borderRadius: 5,
-                  bgcolor: "#f1f5f9",
-                  "& .MuiLinearProgress-bar": {
-                    bgcolor: level.color,
-                    borderRadius: 5,
-                  },
-                }}
-              />
-            </Box>
-          </Paper>
-        ))}
+
+              {/* Info + progress */}
+              <Box flex={1} minWidth={0}>
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb={0.75}
+                >
+                  <Box>
+                    <Typography fontWeight={700} fontSize="14px">
+                      {style.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {grp.nameVi}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={600}
+                    >
+                      {grp.learnedWords}/{grp.totalWords}
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      fontWeight={700}
+                      sx={{
+                        color: style.color,
+                        minWidth: 34,
+                        textAlign: "right",
+                      }}
+                    >
+                      {pct}%
+                    </Typography>
+                  </Stack>
+                </Stack>
+
+                <LinearProgress
+                  variant="determinate"
+                  value={pct}
+                  sx={{
+                    height: 6,
+                    borderRadius: 3,
+                    bgcolor: style.bg,
+                    "& .MuiLinearProgress-bar": {
+                      bgcolor: style.color,
+                      borderRadius: 3,
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Lock / action */}
+              {grp.locked ? (
+                <Typography
+                  variant="caption"
+                  color="text.disabled"
+                  sx={{ flexShrink: 0 }}
+                >
+                  🔒
+                </Typography>
+              ) : (
+                <Button
+                  component={Link}
+                  href={`/learning/level/${grp.level}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    flexShrink: 0,
+                    borderColor: style.color,
+                    color: style.color,
+                    borderRadius: 2,
+                    fontSize: "12px",
+                    px: 1.5,
+                    "&:hover": { bgcolor: style.bg, borderColor: style.color },
+                  }}
+                >
+                  Học
+                </Button>
+              )}
+            </Paper>
+          );
+        })}
       </Stack>
     </Box>
   );

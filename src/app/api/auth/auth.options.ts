@@ -18,8 +18,6 @@ async function refreshAccessToken(token: any) {
 
     if (!res.ok) throw refreshed;
 
-    console.log(">>> Đã làm mới Token thành công!");
-
     return {
       ...token,
       access_token: refreshed.data.access_token,
@@ -96,7 +94,7 @@ export const authOptions: AuthOptions = {
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
       // 1. Lần đầu đăng nhập (Credentials hoặc Google)
       if (user) {
         // Trường hợp Google: Lấy data từ signIn callback
@@ -110,6 +108,14 @@ export const authOptions: AuthOptions = {
           expires_at:
             jwtDecode<{ exp: number }>(backend.access_token).exp * 1000,
         };
+      }
+
+      if (trigger === "update" && session?.name) {
+        token.user = {
+          ...(token.user as any),
+          name: session.name,
+        };
+        return token;
       }
 
       // 2. Kiểm tra nếu Access Token vẫn còn hạn (còn hơn 1 phút)

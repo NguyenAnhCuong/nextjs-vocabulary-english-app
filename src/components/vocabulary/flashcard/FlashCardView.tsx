@@ -8,7 +8,6 @@ import {
   Chip,
   Stack,
   Tooltip,
-  Fade,
 } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
